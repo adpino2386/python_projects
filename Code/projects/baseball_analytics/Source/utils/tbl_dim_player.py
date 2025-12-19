@@ -3,9 +3,9 @@ import pylahman
 import pybaseball as pyb
 import pandas as pd
 
-def update_players(engine: Engine):   
+def create_dim_player_table(engine: Engine):   
     try:
-        print("💾 Processing update_players...")
+        print("💾 Creating dim_player...")
         players_lahman = pylahman.People()
         player_chadwick = pyb.chadwick_register()
 
@@ -147,22 +147,22 @@ def update_players(engine: Engine):
 
         # Check for nulls in my table - there shouldn't be any
         if (players_df.isnull().sum() == 0).all():
-            print(f"   ✅ No nulls found in the players dataframe.")
+            print(f"   ✅ No nulls found!")
         else:
-            print("   ⚠️ WARNING - There are nulls in some columns in the players dataframe .")
+            print("   ⚠️ WARNING - There are nulls in some columns.")
 
         # # --- STEP 5: LOADING ---
-        print(f"    Loading {len(players_df)} new rows into the players dataframe...")
+        print(f"   🔃 Loading {len(players_df)} rows...")
         
         players_df.to_sql(
-            'players', 
+            'dim_player', 
             engine, 
             if_exists='replace',
             index=False, 
             chunksize=5000
         )
         
-        print(f"   ✅ Successfully added {len(players_df)} new rows into the players dataframe.")
+        print(f"   ✅ Successfully added {len(players_df)} new rows of data.")
 
     except Exception as e:
         print(f"   ❌ ETL Failed during extraction or loading: {e}")

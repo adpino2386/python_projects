@@ -5,7 +5,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import text
 
 def create_connection_postgresql():
-    print("💾 Connecting to the database...")
+    print("🛜  Connecting to the database...")
     
     # Load environment variables from .env file
     load_dotenv()

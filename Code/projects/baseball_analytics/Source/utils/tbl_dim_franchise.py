@@ -4,9 +4,9 @@ import pybaseball as pyb
 import pandas as pd
 
 
-def update_team_franchises(engine: Engine):
+def create_dim_franchise_table(engine: Engine):
     try:
-        print("💾 Processing team_franchises...")
+        print("💾 Creating dim_franchise...")
         
         # Import the franchises
         #? Note: As of 2025-12-18 there is only data up to the 2024 season
@@ -27,23 +27,23 @@ def update_team_franchises(engine: Engine):
         # Final verification
         null_count = team_franchises[text_cols].isnull().sum().sum()
         if null_count == 0:
-            print("   ✅ All string columns are clean. No nulls found in team_franchises.")
+            print("   ✅ All string columns are clean. No nulls found!")
         else:
             print(f"   ⚠️ Warning: {null_count} nulls still remain in text columns.")
             
         
         # Loading
-        print(f"   Loading {len(team_franchises)} new rows into team_franchises...")
+        print(f"   🔃 Loading {len(team_franchises)} rows...")
         
         team_franchises.to_sql(
-            'team_franchises', 
+            'dim_franchise', 
             engine, 
             if_exists='replace',
             index=False, 
             chunksize=5000
         )
         
-        print(f"   ✅ Successfully added {len(team_franchises)} new rows of data into team_franchises.")
+        print(f"   ✅ Successfully added {len(team_franchises)} new rows of data.")
     
     except Exception as e:
         print(f"   ❌ ETL Failed during extraction or loading: {e}")

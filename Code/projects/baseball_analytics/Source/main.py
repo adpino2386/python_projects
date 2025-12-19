@@ -23,22 +23,27 @@ from io import StringIO
 import pylahman
 
 from utils.connection_engine import create_connection_postgresql
-from utils.players_info import update_players
-from utils.team_franchises import update_team_franchises
-from utils.team_info import update_team_info
+from utils.tbl_dim_player import create_dim_player_table
+from utils.tbl_dim_franchise import create_dim_franchise_table
+from utils.tbl_fact_player import create_fact_player_tables
+from utils.tbl_fact_statcast_pitches import create_fact_statcast_events_pitch_by_pitch
 
 def main():
     # Create the engine
     engine = create_connection_postgresql() 
     
-    # Update the players table
-    update_players(engine)
+    # Import and load the player information
+    create_dim_player_table(engine)
     
-    # Update the team_franchises table
-    update_team_franchises(engine)
+    # Import and load the franchise table
+    create_dim_franchise_table(engine)
     
-    # Update the team_info table
-    update_team_info(engine)
+    # Import and load the players' fact tables
+    create_fact_player_tables(engine)
+    
+    # Import and load the events -pitch by pitch, 
+    # from Statcast
+    create_fact_statcast_events_pitch_by_pitch(engine, n_days= 730)
 
 if __name__ == "__main__":
     main()
