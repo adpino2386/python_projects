@@ -22,11 +22,15 @@ import numpy as np
 from io import StringIO
 import pylahman
 
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+
 from utils.connection_engine import create_connection_postgresql
 from utils.tbl_dim_player import create_dim_player_table
 from utils.tbl_dim_franchise import create_dim_franchise_table
 from utils.tbl_fact_player import create_fact_player_tables
-from utils.tbl_fact_statcast_pitches import create_fact_statcast_events_pitch_by_pitch
+from utils.update_tbl_fact_statcast_pitches import update_fact_statcast_pitches
+from utils.tbl_dim_pitcher_archetypes import update_dim_pitcher_archetypes
 
 def main():
     # Create the engine
@@ -41,9 +45,21 @@ def main():
     # Import and load the players' fact tables
     create_fact_player_tables(engine)
     
-    # Import and load the events -pitch by pitch, 
-    # from Statcast
-    create_fact_statcast_events_pitch_by_pitch(engine, n_days= 730)
+    # Check the max date in fact_statcast_pitches.
+    # If the max date is not yesterday's date, then update the table and 
+    # append the days missing.
+    update_fact_statcast_pitches(engine)
+    
+    #TODO: Check the last date that it was updated.
+    # if it has been less than 3 weeks since the last
+    # time, then do not run it. 
+    # If I re-cluster every day, a pitcher might jump from "Archetype 0" to "Archetype 1" 
+    # just because of one bad outing. This makes your dashboard confusing for users who see a 
+    # player's label constantly changing.
+    
+    #? KMeans model
+    # Update the dim_pitcher_archetypes 
+    update_dim_pitcher_archetypes(engine)
 
 if __name__ == "__main__":
     main()
