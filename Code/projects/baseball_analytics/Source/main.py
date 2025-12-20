@@ -31,6 +31,7 @@ from utils.tbl_dim_franchise import create_dim_franchise_table
 from utils.tbl_fact_player import create_fact_player_tables
 from utils.update_tbl_fact_statcast_pitches import update_fact_statcast_pitches
 from utils.tbl_dim_pitcher_archetypes import update_dim_pitcher_archetypes
+from utils.tbl_luck_scores import update_fact_player_luck_summary
 
 def main():
     # Create the engine
@@ -60,6 +61,9 @@ def main():
     #? KMeans model
     # Update the dim_pitcher_archetypes 
     update_dim_pitcher_archetypes(engine)
+    
+    # Update Luck Score table
+    update_fact_player_luck_summary(engine)
 
 if __name__ == "__main__":
-    main()
+    main() 

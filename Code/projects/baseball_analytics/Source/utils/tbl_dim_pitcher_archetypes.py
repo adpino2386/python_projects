@@ -12,21 +12,42 @@ def update_dim_pitcher_archetypes(engine: Engine):
     """
     
     # 1. Pull unique pitcher stats
+    # query = """
+    # SELECT 
+    #     pitcher,
+    #     AVG(release_speed) as avg_velo, 
+    #     AVG(release_spin_rate) as avg_spin, -- The spin rate of a pitch measured in revolutions per minute (rpm) at the moment of release
+    #     AVG(pfx_x) as avg_horiz_mvmt, -- Horizontal movement in feet from the catcher's perspective
+    #     AVG(pfx_z) as avg_vert_mvmt -- Vertical movement from the catcher's perpsective.
+    # FROM fact_statcast_pitches
+    # WHERE release_speed IS NOT NULL 
+    #     AND release_spin_rate IS NOT NULL
+    #     AND pfx_x IS NOT NULL 
+    #     AND pfx_z IS NOT NULL
+    # GROUP BY pitcher
+    # HAVING COUNT(*) > 100 
+    # """
+    
     query = """
+    WITH pitcher_names AS (
     SELECT 
-        pitcher,
-        AVG(release_speed) as avg_velo, 
-        AVG(release_spin_rate) as avg_spin, -- The spin rate of a pitch measured in revolutions per minute (rpm) at the moment of release
-        AVG(pfx_x) as avg_horiz_mvmt, -- Horizontal movement in feet from the catcher's perspective
-        AVG(pfx_z) as avg_vert_mvmt -- Vertical movement from the catcher's perpsective.
-    FROM fact_statcast_pitches
-    WHERE release_speed IS NOT NULL 
-        AND release_spin_rate IS NOT NULL
-        AND pfx_x IS NOT NULL 
-        AND pfx_z IS NOT NULL
-    GROUP BY pitcher
-    HAVING COUNT(*) > 100 
+        key_mlbam, 
+        CONCAT(first_name_chadwick, ' ', last_name_chadwick) as full_name 
+    FROM dim_player
+    )
+    SELECT 
+        p.pitcher,
+        pn.full_name,
+        AVG(p.release_speed) as avg_velo, 
+        AVG(p.release_spin_rate) as avg_spin, -- The spin rate of a pitch measured in revolutions per minute (rpm) at the moment of release
+        AVG(p.pfx_x) as avg_horiz_mvmt, -- Horizontal movement in feet from the catcher's perspective
+        AVG(p.pfx_z) as avg_vert_mvmt -- Vertical movement from the catcher's perpsective.
+    FROM fact_statcast_pitches p
+    JOIN pitcher_names pn ON p.pitcher = pn.key_mlbam
+    GROUP BY p.pitcher, pn.full_name
+    HAVING COUNT(*) > 100
     """
+    
     pitcher_stats = pd.read_sql(query, engine)
 
     # 2. Scale the data
@@ -52,7 +73,7 @@ def update_dim_pitcher_archetypes(engine: Engine):
     pitcher_stats['archetype_name'] = pitcher_stats['archetype_id'].map(archetype_map)
     
     # Add the current timestamp to every row
-    pitcher_stats['updated_at'] = datetime.now()
+    pitcher_stats['calculation_date'] = datetime.now()
 
     # 5. Database Update (Truncate and Append)
     with engine.connect() as conn:
@@ -65,7 +86,7 @@ def update_dim_pitcher_archetypes(engine: Engine):
             conn.rollback()
 
     # Upload data including the new column
-    pitcher_stats[['pitcher', 'archetype_id', 'archetype_name', 'updated_at']].to_sql(
+    pitcher_stats[['pitcher', 'full_name', 'archetype_id', 'archetype_name', 'calculation_date']].to_sql(
         'dim_pitcher_archetypes', 
         engine, 
         if_exists='append', 
