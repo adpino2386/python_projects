@@ -5,6 +5,8 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sqlalchemy.engine import Engine
 from sqlalchemy import text
+from datetime import date, timedelta
+from datetime import datetime
 
 def create_dim_pitcher_archetypes(engine: Engine):
     try:
@@ -369,6 +371,10 @@ def create_dim_pitcher_archetypes(engine: Engine):
         # Execute function
         pitcher_archetype_df = update_dim_pitcher_archetypes(engine)
         
+        # Add the calculation_date
+        pitcher_archetype_df['calculation_date'] = datetime.now()
+        
+        # Load to SQL
         pitcher_archetype_df.to_sql(
         'dim_pitcher_archetypes', 
         engine, 

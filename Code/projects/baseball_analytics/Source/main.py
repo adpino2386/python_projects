@@ -39,19 +39,19 @@ def main():
     # Create the engine
     engine = create_connection_postgresql() 
     
-    # Import and load the player information
-    create_dim_player_table(engine)
+    # # Import and load the player information
+    # create_dim_player_table(engine)
     
-    # Import and load the franchise table
-    create_dim_franchise_table(engine)
+    # # Import and load the franchise table
+    # create_dim_franchise_table(engine)
     
-    # Import and load the players' fact tables
-    create_fact_player_tables(engine)
+    # # Import and load the players' fact tables
+    # create_fact_player_tables(engine)
     
-    # Check the max date in fact_statcast_pitches.
-    # If the max date is not yesterday's date, then update the table and 
-    # append the days missing.
-    update_fact_statcast_pitches(engine)
+    # # Check the max date in fact_statcast_pitches.
+    # # If the max date is not yesterday's date, then update the table and 
+    # # append the days missing.
+    # update_fact_statcast_pitches(engine)
     
     # TODO: Check the last date that it was updated.
     # if it has been less than 3 weeks since the last
@@ -63,8 +63,8 @@ def main():
     # Update the dim_pitcher_archetypes 
     create_dim_pitcher_archetypes(engine)
     
-    # Update Luck Score table
-    update_fact_player_luck_summary(engine)
+    # # Update Luck Score table
+    # update_fact_player_luck_summary(engine)
     
 if __name__ == "__main__":
     main() 
