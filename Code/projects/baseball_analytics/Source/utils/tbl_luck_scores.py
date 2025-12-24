@@ -85,7 +85,7 @@ def update_fact_player_luck_summary(engine: Engine):
         print(f"   🔃 Loading {len(df)} rows...")
         
         # Write to the database
-        df[['batter', 'archetype_name', 'luck_score', 'luck_confidence', 'at_bats', 'calculation_date']].to_sql(
+        df[['batter', 'luck_score', 'luck_confidence', 'at_bats', 'calculation_date']].to_sql(
         'fact_player_luck_summary', 
         engine, 
         if_exists='replace', 
