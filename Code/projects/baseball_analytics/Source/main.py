@@ -34,24 +34,25 @@ from utils.tbl_fact_player import create_fact_player_tables
 from utils.update_tbl_fact_statcast_pitches import update_fact_statcast_pitches
 from utils.tbl_dim_pitcher_archetypes import create_dim_pitcher_archetypes
 from utils.tbl_luck_scores import update_fact_player_luck_summary
+from utils.tbl_dim_hitter_archetypes import create_dim_hitter_archetypes
 
 def main():
     # Create the engine
     engine = create_connection_postgresql() 
     
-    # # Import and load the player information
-    # create_dim_player_table(engine)
+    # Import and load the player information
+    create_dim_player_table(engine)
     
-    # # Import and load the franchise table
-    # create_dim_franchise_table(engine)
+    # Import and load the franchise table
+    create_dim_franchise_table(engine)
     
-    # # Import and load the players' fact tables
-    # create_fact_player_tables(engine)
+    # Import and load the players' fact tables
+    create_fact_player_tables(engine)
     
-    # # Check the max date in fact_statcast_pitches.
-    # # If the max date is not yesterday's date, then update the table and 
-    # # append the days missing.
-    # update_fact_statcast_pitches(engine)
+    # Check the max date in fact_statcast_pitches.
+    # If the max date is not yesterday's date, then update the table and 
+    # append the days missing.
+    update_fact_statcast_pitches(engine)
     
     # TODO: Check the last date that it was updated.
     # if it has been less than 3 weeks since the last
@@ -63,8 +64,11 @@ def main():
     # Update the dim_pitcher_archetypes 
     create_dim_pitcher_archetypes(engine)
     
-    # # Update Luck Score table
-    # update_fact_player_luck_summary(engine)
+    # Update the dim_hitter_archetypes
+    create_dim_hitter_archetypes(engine)
+    
+    # Update Luck Score table
+    update_fact_player_luck_summary(engine)
     
 if __name__ == "__main__":
     main() 
