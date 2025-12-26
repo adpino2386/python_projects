@@ -29,6 +29,8 @@ def init_session_state():
         st.session_state.user_email = None
     if 'show_payment' not in st.session_state:
         st.session_state.show_payment = False
+    if 'selected_page' not in st.session_state:
+        st.session_state.selected_page = 'home'
     if 'db_engine' not in st.session_state:
         st.session_state.db_engine = None
 

@@ -59,7 +59,7 @@ init_session_state()
 
 # Sidebar navigation
 with st.sidebar:
-        st.markdown("### ⚾ Baseball Analytics")
+    st.markdown("### ⚾ Baseball Analytics")
     
     # User authentication status
     if st.session_state.get('authenticated'):
@@ -86,12 +86,17 @@ with st.sidebar:
     
     selected = st.radio("Navigate", list(pages.keys()))
     
-    # Show payment page if needed
+    # Show payment page if needed, otherwise use selected navigation
     if st.session_state.get('show_payment', False):
-        selected = "payment"
+        st.session_state.selected_page = "payment"
+    else:
+        st.session_state.selected_page = pages.get(selected, "home")
+        # Reset show_payment if user navigates away
+        if st.session_state.selected_page != "payment":
+            st.session_state.show_payment = False
 
 # Route to selected page
-page_name = pages.get(selected, "home")
+page_name = st.session_state.get('selected_page', 'home')
 
 if page_name == "home":
     home.show()
@@ -111,4 +116,7 @@ elif page_name == "standings":
     standings.show()
 elif page_name == "payment":
     payment.show()
+else:
+    # Default to home if page not found
+    home.show()
 

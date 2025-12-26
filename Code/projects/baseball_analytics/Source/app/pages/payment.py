@@ -65,6 +65,7 @@ def show():
             st.session_state.authenticated = True
             st.session_state.user_email = email if email else "demo@baseballanalytics.com"
             st.session_state.show_payment = False
+            st.session_state.selected_page = "home"  # Redirect to home after login
             st.success("✅ Premium access granted!")
             st.rerun()
         
