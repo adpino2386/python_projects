@@ -16,9 +16,23 @@ sys.path.insert(0, str(source_dir))
 from utils.connection_engine import create_connection_postgresql
 from dotenv import load_dotenv
 
-# Load environment variables
-env_path = source_dir / "utils" / ".env"
-load_dotenv(dotenv_path=str(env_path))
+# Load environment variables - check multiple locations
+env_paths = [
+    source_dir / "utils" / ".env",  # Original location: Source/utils/.env
+    app_dir / "utils" / ".env",      # App location: Source/app/utils/.env
+    source_dir / ".env"              # Fallback: Source/.env
+]
+
+env_loaded = False
+for env_path in env_paths:
+    if env_path.exists():
+        load_dotenv(dotenv_path=str(env_path), override=True)
+        env_loaded = True
+        break
+
+# If no .env file found, try default load_dotenv (current directory)
+if not env_loaded:
+    load_dotenv(override=True)
 
 
 def init_session_state():
@@ -39,12 +53,38 @@ def get_db_engine() -> Engine:
     """Get or create database engine"""
     if st.session_state.db_engine is None:
         try:
-            # Ensure .env is loaded before creating connection
-            env_path = source_dir / "utils" / ".env"
-            load_dotenv(dotenv_path=str(env_path), override=True)
+            # Ensure .env is loaded before creating connection (check multiple locations)
+            env_paths = [
+                source_dir / "utils" / ".env",  # Source/utils/.env
+                app_dir / "utils" / ".env",      # Source/app/utils/.env
+                source_dir / ".env"              # Source/.env
+            ]
+            
+            env_loaded = False
+            for env_path in env_paths:
+                if env_path.exists():
+                    load_dotenv(dotenv_path=str(env_path), override=True)
+                    env_loaded = True
+                    break
+            
+            if not env_loaded:
+                load_dotenv(override=True)  # Try default location
+            
             st.session_state.db_engine = create_connection_postgresql()
         except KeyError as e:
-            st.error(f"Database connection error: Missing environment variable '{e}'. Please check your .env file in the utils folder.")
+            # Provide helpful error message with possible locations
+            possible_locations = [
+                str(source_dir / "utils" / ".env"),
+                str(app_dir / "utils" / ".env"),
+                str(source_dir / ".env")
+            ]
+            st.error(
+                f"Database connection error: Missing environment variable '{e}'. "
+                f"Please check your .env file. Expected locations:\n"
+                f"- {possible_locations[0]}\n"
+                f"- {possible_locations[1]}\n"
+                f"- {possible_locations[2]}"
+            )
             return None
         except Exception as e:
             st.error(f"Database connection error: {e}")
