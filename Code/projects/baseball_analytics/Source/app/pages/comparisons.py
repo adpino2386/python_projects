@@ -109,7 +109,7 @@ def show_head_to_head(engine):
             labels={'x': 'Score Type', 'y': 'Value'}
         )
         fig.add_hline(y=0, line_dash="dash", line_color="gray")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def show_pitcher_comparison(engine):
@@ -139,7 +139,7 @@ def show_pitcher_comparison(engine):
                 comparison = compare_pitchers_vs_lineup(engine, pitcher_ids, lineup)
                 
                 if not comparison.empty:
-                    st.dataframe(comparison, use_container_width=True, hide_index=True)
+                    st.dataframe(comparison, width='stretch', hide_index=True)
                     
                     # Visual comparison
                     fig = px.bar(
@@ -148,7 +148,7 @@ def show_pitcher_comparison(engine):
                         title="Win Probability Comparison",
                         color_continuous_scale='Blues'
                     )
-                    st.plotly_chart(fig, use_container_width=True)
+                    st.plotly_chart(fig, width='stretch')
     else:
         st.info("Select at least 2 pitchers to compare")
 
@@ -177,7 +177,7 @@ def show_hitter_comparison(engine):
         if available_cols:
             comparison_df = selected_data[available_cols].copy()
             comparison_df.columns = [col.replace('_', ' ').title() for col in comparison_df.columns]
-            st.dataframe(comparison_df, use_container_width=True, hide_index=True)
+            st.dataframe(comparison_df, width='stretch', hide_index=True)
     else:
         st.info("Select at least 2 hitters to compare")
 

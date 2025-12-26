@@ -49,9 +49,9 @@ def show():
             
             col_login, col_signup = st.columns(2)
             with col_login:
-                login_button = st.form_submit_button("Login", use_container_width=True)
+                login_button = st.form_submit_button("Login")
             with col_signup:
-                signup_button = st.form_submit_button("Sign Up", use_container_width=True)
+                signup_button = st.form_submit_button("Sign Up")
         
         st.markdown("---")
         
@@ -59,7 +59,7 @@ def show():
         st.markdown("### 🚀 MVP Access")
         st.info("For MVP demo purposes, click below to access premium features")
         
-        if st.button("🎫 Get Premium Access (Demo)", use_container_width=True, type="primary"):
+        if st.button("🎫 Get Premium Access (Demo)", type="primary"):
             # In production, this would verify payment via Stripe
             # For MVP demo, we'll just set authenticated = True
             st.session_state.authenticated = True
@@ -87,7 +87,7 @@ def show_premium_gate():
         </div>
         """, unsafe_allow_html=True)
         
-        if st.button("🚀 Upgrade to Premium", use_container_width=True, type="primary"):
+        if st.button("🚀 Upgrade to Premium", type="primary"):
             st.session_state.show_payment = True
             st.rerun()
 
