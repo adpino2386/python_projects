@@ -63,13 +63,14 @@ def main():
     # player's label constantly changing.    
     # ? KMeans model
     # Update the dim_pitcher_archetypes 
-    create_dim_pitcher_archetypes(engine)
+    #create_dim_pitcher_archetypes(engine)
     
-    # # Update the dim_hitter_archetypes
-    # create_dim_hitter_archetypes(engine)
+    # Update the dim_hitter_archetypes
+    create_dim_hitter_archetypes(engine)
     
     # # Update Luck Score table
     # update_fact_player_luck_summary(engine)
+
     
 if __name__ == "__main__":    
     # Load the environment variables first

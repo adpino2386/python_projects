@@ -7,6 +7,10 @@ from sqlalchemy.engine import Engine
 from sqlalchemy import text
 from datetime import date, timedelta
 from datetime import datetime
+import joblib
+import os
+
+from dotenv import load_dotenv
 
 def create_dim_hitter_archetypes(engine: Engine):
     try:
@@ -28,29 +32,72 @@ def create_dim_hitter_archetypes(engine: Engine):
             
             # 2. Effectiveness Scores (Grade Components)
             # Power is now grounded in stabilized EV
-            df['power_score'] = (
-                (df['ev_pct'] * 0.50) + 
-                (df['barrel_pct'] * 0.50)
-            ).round(1)
+            df['power_score'] = ((df['ev_pct'] * 0.50) + (df['barrel_pct'] * 0.50)).round(1)
             
             # Eye combines discipline with 'Battle' (2-strike) ability
-            df['discipline_score'] = (
-                (df['discipline_pct'] * 0.60) + 
-                (df['battle_pct'] * 0.40)
-            ).round(1)
-
-            # 3. Clustering (Archetype Definition)
-            scaler = StandardScaler()
-            # Filling NaNs with league average proxies for safety
-            scaled_data = scaler.fit_transform(df[identity_features].fillna(df[identity_features].median()))
+            df['discipline_score'] = ((df['discipline_pct'] * 0.60) + (df['battle_pct'] * 0.40)).round(1)
             
-            # 7 Clusters allows for enough nuance (Sluggers, Pests, Specialists, etc.)
-            gmm = GaussianMixture(n_components=7, random_state=42, n_init=10)
-            df['hitter_cluster'] = gmm.fit_predict(scaled_data)
+            # 1. Load the .env file 
+            # Since .env is in the same folder as this script, we can just load it
+            load_dotenv()
 
-            # 4. Outlier Detection (Unicorns)
+            # 2. Get the path from the environment variable
+            # If it's not found, we provide a 'fallback' default
+            input_folder = os.getenv('INPUT_DIR', '../input')
+
+            # 3. Construct the full paths to your files
+            # We use abspath to make sure Python doesn't get confused by the current working directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+            scaler_path = os.path.abspath(os.path.join(base_path, input_folder, 'hitter_scaler_v1.pkl'))
+            model_path = os.path.abspath(os.path.join(base_path, input_folder, 'hitter_model_v1.pkl'))
+
+            # 4. Load the files
+            scaler = joblib.load(scaler_path)
+            gmm    = joblib.load(model_path)
+
+            # A. Initialize and FIT the scaler (Learn the math)
+            #scaler = StandardScaler()
+            # We use fit_transform here because we are learning from this data
+            scaled_data = scaler.transform(df[identity_features].fillna(df[identity_features].median()))
+            
+            # B. Initialize and FIT the model (Find the clusters)
+            #gmm = GaussianMixture(n_components=7, random_state=42, n_init=10)
+            df['hitter_cluster'] = gmm.predict(scaled_data)
+
+            # # SAVE THE MODELS (Run once, then comment out)
+            # joblib.dump(scaler, 'hitter_scaler_v1.pkl')
+            # joblib.dump(gmm, 'hitter_model_v1.pkl')
+                        
+            # 4. Professional Hitter Archetype Mapping
+            # Note: Validate these against your printed profile table!
+            hitter_map = {
+                0: "Discipline Specialist",  # Low chase, high walks, moderate power
+                1: "Pull-Side Power Slugger", # High LA, High Pull%, High EV
+                2: "Contact-Oriented Pest",   # High 2-strike contact, low LA, low K%
+                3: "All-Fields Technician",   # Neutrality high, line drive plane
+                4: "Aggressive Free-Swinger", # High first-pitch swing, high chase
+                5: "Modern Three-True-Outcome", # High LA, High Whiff, High EV
+                6: "High-Traffic Slap Hitter" # Low LA, high zone swing, high speed/contact
+            }
+            df['hitter_archetype_label'] = df['hitter_cluster'].map(hitter_map)
+            
+            # 5. Outlier Detection (Unicorns)
             iso = IsolationForest(contamination=0.03, random_state=42)
             df['is_hitter_unicorn'] = iso.fit_predict(scaled_data)
+            
+            # def profile_hitter_clusters(df):
+            #     profile_metrics = [
+            #         'hitter_cluster',
+            #         # DNA (Identity)
+            #         'chase_pct_raw', 'zone_swing_raw', 'avg_la', 'pull_pct_raw', 'two_strike_contact_raw',
+            #         # Results
+            #         'ev_pct', 'barrel_pct', 'woba_reliability_pct', 'discipline_pct'
+            #     ]
+            #     return df[profile_metrics].groupby('hitter_cluster').mean().round(2)
+
+            # # Usage: Run this and print the result to see the groups
+            # hitter_profile_table = profile_hitter_clusters(df)
+            # print(hitter_profile_table)
             
             # 5. Overall Grade Calculation
             def calculate_scouting_grade(row, mode='hitter'):
@@ -92,33 +139,53 @@ def create_dim_hitter_archetypes(engine: Engine):
             df['overall_grade'] = df.apply(lambda x: calculate_scouting_grade(x, mode='hitter'), axis=1)
 
 
-            # 6. Scouting Report Generation
+            # # 6. Scouting Report Generation
+            # def generate_hitter_report(row):
+            #     tags = []
+                
+            #     # Logic for tags
+            #     if row['power_score'] >= 90: tags.append("🔥 ELITE POWER")
+            #     if row['discipline_score'] >= 90: tags.append("🎯 DISCIPLINE MASTER")
+            #     if row['two_strike_identity'] == 'ELITE SPOILER': tags.append("🦟 PEST")
+            #     if row['neutrality_pct'] > 85: tags.append("🛡️ MATCHUP PROOF")
+            #     if row['is_hitter_unicorn'] == -1: tags.append("🦄 UNICORN")
+
+            #     # Vertical Profile Analysis
+            #     v_desc = f"Attacks the {row['vertical_profile']}."
+                
+            #     # Build Summary
+            #     conf_prefix = "PROVISIONAL: " if "PROVISIONAL" in row['data_confidence'] else ""
+            #     header = f"[{row['overall_grade']}] {conf_prefix}{row['full_name']} ({row['hand']})"
+                
+            #     tag_str = " | ".join(tags)
+            #     body = f"{v_desc} Handles {row['swing_plane']} path. "
+                
+            #     # Platoon Insight
+            #     if row['neutrality_pct'] < 30:
+            #         body += f"Extreme platoon splits detected; high risk against {row['hand']}HP. "
+            #     else:
+            #         body += "Balanced splits make them difficult to platoon against. "
+
+            #     return tag_str, f"{header}\nTAGS: {tag_str}\nSUMMARY: {body}"
+
+            # df['hitter_tags'], df['hitter_summary'] = zip(*df.apply(generate_hitter_report, axis=1))
+            
+            # return df
+            
+            # 6. Scouting Report Generation (Updated for new labels)
             def generate_hitter_report(row):
                 tags = []
+                header = f"[{row['overall_grade']} {row['hitter_archetype_label']}] ({row['hand']})"
                 
-                # Logic for tags
                 if row['power_score'] >= 90: tags.append("🔥 ELITE POWER")
                 if row['discipline_score'] >= 90: tags.append("🎯 DISCIPLINE MASTER")
                 if row['two_strike_identity'] == 'ELITE SPOILER': tags.append("🦟 PEST")
-                if row['neutrality_pct'] > 85: tags.append("🛡️ MATCHUP PROOF")
                 if row['is_hitter_unicorn'] == -1: tags.append("🦄 UNICORN")
 
-                # Vertical Profile Analysis
-                v_desc = f"Attacks the {row['vertical_profile']}."
-                
-                # Build Summary
-                conf_prefix = "PROVISIONAL: " if "PROVISIONAL" in row['data_confidence'] else ""
-                header = f"[{row['overall_grade']}] {conf_prefix}{row['full_name']} ({row['hand']})"
-                
                 tag_str = " | ".join(tags)
-                body = f"{v_desc} Handles {row['swing_plane']} path. "
+                body = f"Tactically identified as a {row['hitter_archetype_label']}. "
+                body += f"Attacks the {row['vertical_profile']} with a {row['swing_plane']} path. "
                 
-                # Platoon Insight
-                if row['neutrality_pct'] < 30:
-                    body += f"Extreme platoon splits detected; high risk against {row['hand']}HP. "
-                else:
-                    body += "Balanced splits make them difficult to platoon against. "
-
                 return tag_str, f"{header}\nTAGS: {tag_str}\nSUMMARY: {body}"
 
             df['hitter_tags'], df['hitter_summary'] = zip(*df.apply(generate_hitter_report, axis=1))
