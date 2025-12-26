@@ -59,7 +59,7 @@ init_session_state()
 
 # Sidebar navigation
 with st.sidebar:
-        st.markdown("### ⚾ Baseball Analytics")
+    st.markdown("### ⚾ Baseball Analytics")
     
     # User authentication status
     if st.session_state.get('authenticated'):
