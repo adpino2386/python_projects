@@ -1,0 +1,120 @@
+"""
+Standings Page - Free content
+League standings
+"""
+
+import streamlit as st
+import pandas as pd
+import sys
+from pathlib import Path
+
+app_dir = Path(__file__).parent.parent
+source_dir = app_dir.parent
+sys.path.insert(0, str(source_dir))
+
+from app.utils.app_helpers import cached_db_query
+
+
+def show():
+    st.title("📈 League Standings")
+    st.markdown("---")
+    
+    tab1, tab2 = st.tabs(["American League", "National League"])
+    
+    with tab1:
+        show_al_standings()
+    
+    with tab2:
+        show_nl_standings()
+
+
+def show_al_standings():
+    """Show American League standings"""
+    st.subheader("American League Standings")
+    
+    # Placeholder data - in production, query from database
+    st.info("📊 Standings data. In production, this would query from your database or MLB API")
+    
+    al_east = {
+        'Team': ['Yankees', 'Orioles', 'Rays', 'Blue Jays', 'Red Sox'],
+        'W': [95, 93, 90, 85, 80],
+        'L': [67, 69, 72, 77, 82],
+        'PCT': [.586, .574, .556, .525, .494],
+        'GB': ['-', '2.0', '5.0', '10.0', '15.0']
+    }
+    
+    al_central = {
+        'Team': ['Guardians', 'Twins', 'Royals', 'Tigers', 'White Sox'],
+        'W': [92, 88, 82, 78, 75],
+        'L': [70, 74, 80, 84, 87],
+        'PCT': [.568, .543, .506, .481, .463],
+        'GB': ['-', '4.0', '10.0', '14.0', '17.0']
+    }
+    
+    al_west = {
+        'Team': ['Astros', 'Mariners', 'Rangers', 'Angels', 'Athletics'],
+        'W': [94, 91, 86, 81, 68],
+        'L': [68, 71, 76, 81, 94],
+        'PCT': [.580, .562, .531, .500, .420],
+        'GB': ['-', '3.0', '8.0', '13.0', '26.0']
+    }
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("#### AL East")
+        st.dataframe(pd.DataFrame(al_east), use_container_width=True, hide_index=True)
+    
+    with col2:
+        st.markdown("#### AL Central")
+        st.dataframe(pd.DataFrame(al_central), use_container_width=True, hide_index=True)
+    
+    with col3:
+        st.markdown("#### AL West")
+        st.dataframe(pd.DataFrame(al_west), use_container_width=True, hide_index=True)
+
+
+def show_nl_standings():
+    """Show National League standings"""
+    st.subheader("National League Standings")
+    
+    st.info("📊 Standings data. In production, this would query from your database or MLB API")
+    
+    nl_east = {
+        'Team': ['Braves', 'Phillies', 'Mets', 'Marlins', 'Nationals'],
+        'W': [98, 92, 88, 82, 76],
+        'L': [64, 70, 74, 80, 86],
+        'PCT': [.605, .568, .543, .506, .469],
+        'GB': ['-', '6.0', '10.0', '16.0', '22.0']
+    }
+    
+    nl_central = {
+        'Team': ['Brewers', 'Cubs', 'Reds', 'Cardinals', 'Pirates'],
+        'W': [91, 87, 83, 79, 74],
+        'L': [71, 75, 79, 83, 88],
+        'PCT': [.562, .537, .512, .488, .457],
+        'GB': ['-', '4.0', '8.0', '12.0', '17.0']
+    }
+    
+    nl_west = {
+        'Team': ['Dodgers', 'Padres', 'Giants', 'Diamondbacks', 'Rockies'],
+        'W': [100, 92, 87, 82, 70],
+        'L': [62, 70, 75, 80, 92],
+        'PCT': [.617, .568, .537, .506, .432],
+        'GB': ['-', '8.0', '13.0', '18.0', '30.0']
+    }
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.markdown("#### NL East")
+        st.dataframe(pd.DataFrame(nl_east), use_container_width=True, hide_index=True)
+    
+    with col2:
+        st.markdown("#### NL Central")
+        st.dataframe(pd.DataFrame(nl_central), use_container_width=True, hide_index=True)
+    
+    with col3:
+        st.markdown("#### NL West")
+        st.dataframe(pd.DataFrame(nl_west), use_container_width=True, hide_index=True)
+
