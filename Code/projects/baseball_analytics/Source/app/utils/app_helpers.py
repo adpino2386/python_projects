@@ -39,7 +39,13 @@ def get_db_engine() -> Engine:
     """Get or create database engine"""
     if st.session_state.db_engine is None:
         try:
+            # Ensure .env is loaded before creating connection
+            env_path = source_dir / "utils" / ".env"
+            load_dotenv(dotenv_path=str(env_path), override=True)
             st.session_state.db_engine = create_connection_postgresql()
+        except KeyError as e:
+            st.error(f"Database connection error: Missing environment variable '{e}'. Please check your .env file in the utils folder.")
+            return None
         except Exception as e:
             st.error(f"Database connection error: {e}")
             return None

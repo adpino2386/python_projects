@@ -70,7 +70,7 @@ def show():
             'L': [67, 69, 72, 77, 82],
             'GB': ['-', '2.0', '5.0', '10.0', '15.0']
         }
-        st.dataframe(pd.DataFrame(al_data), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(al_data), width='stretch', hide_index=True)
     
     with col2:
         st.subheader("National League")
@@ -82,7 +82,7 @@ def show():
             'L': [62, 64, 70, 74, 80],
             'GB': ['-', '2.0', '8.0', '12.0', '18.0']
         }
-        st.dataframe(pd.DataFrame(nl_data), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(nl_data), width='stretch', hide_index=True)
     
     st.markdown("---")
     
@@ -131,7 +131,7 @@ def show():
     st.markdown("---")
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        if st.button("🚀 Upgrade to Premium - Unlock All Features", use_container_width=True, type="primary"):
+        if st.button("🚀 Upgrade to Premium - Unlock All Features", type="primary"):
             st.session_state.show_payment = True
             st.rerun()
 

@@ -117,7 +117,7 @@ def show_todays_games(engine):
                     )
         
         st.markdown("### Detailed Predictions")
-        st.dataframe(pred_df, use_container_width=True, hide_index=True)
+        st.dataframe(pred_df, width='stretch', hide_index=True)
         
         # Visualizations
         col1, col2 = st.columns(2)
@@ -130,7 +130,7 @@ def show_todays_games(engine):
                 color_continuous_scale='Blues'
             )
             fig.update_layout(showlegend=False, height=400)
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
         
         with col2:
             fig = px.scatter(
@@ -139,7 +139,7 @@ def show_todays_games(engine):
                 title="Expected Runs vs Strikeouts",
                 labels={'Exp Runs': 'Expected Runs Allowed', 'Exp K': 'Expected Strikeouts'}
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
 
 
 def show_best_matchups(engine):
@@ -183,7 +183,7 @@ def show_best_matchups(engine):
         best_df = best_df.sort_values('Matchup Score', ascending=True).head(20)
         best_df['Matchup Score'] = best_df['Matchup Score'].round(2)
         
-        st.dataframe(best_df, use_container_width=True, hide_index=True)
+        st.dataframe(best_df, width='stretch', hide_index=True)
         
         # Chart
         fig = px.bar(
@@ -193,7 +193,7 @@ def show_best_matchups(engine):
             color_continuous_scale='RdYlGn_r'
         )
         fig.update_layout(height=500, xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.info("No matchups found")
 
@@ -237,7 +237,7 @@ def show_worst_matchups(engine):
         perf_df = pd.DataFrame(pitcher_performance)
         perf_df = perf_df.sort_values('Win Probability', ascending=False).head(15)
         
-        st.dataframe(perf_df, use_container_width=True, hide_index=True)
+        st.dataframe(perf_df, width='stretch', hide_index=True)
         
         # Chart
         fig = px.bar(
@@ -247,7 +247,7 @@ def show_worst_matchups(engine):
             color_continuous_scale='Blues'
         )
         fig.update_layout(height=500, xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
 
 
 def show_due_for_hits(engine):
@@ -277,7 +277,7 @@ def show_due_for_hits(engine):
         df['Luck Score'] = df['Luck Score'].round(3)
         df['Confidence'] = (df['Confidence'] * 100).round(1)
         
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width='stretch', hide_index=True)
         
         # Chart
         fig = px.bar(
@@ -287,7 +287,7 @@ def show_due_for_hits(engine):
             color_continuous_scale='Reds'
         )
         fig.update_layout(height=500, xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.info("No luck score data available. Please run luck score calculations.")
 
@@ -320,7 +320,7 @@ def show_cooling_off(engine):
         df['Confidence'] = (df['Confidence'] * 100).round(1)
         df['Luck Score'] = df['Luck Score'].abs()  # Make positive for display
         
-        st.dataframe(df, use_container_width=True, hide_index=True)
+        st.dataframe(df, width='stretch', hide_index=True)
         
         # Chart
         fig = px.bar(
@@ -330,7 +330,7 @@ def show_cooling_off(engine):
             color_continuous_scale='Oranges'
         )
         fig.update_layout(height=500, xaxis_tickangle=-45)
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, width='stretch')
     else:
         st.info("No luck score data available. Please run luck score calculations.")
 

@@ -20,8 +20,16 @@ st.set_page_config(
     page_title="Baseball Analytics MVP",
     page_icon="⚾",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
+    menu_items={
+        'Get Help': None,
+        'Report a bug': None,
+        'About': "Baseball Analytics MVP - Advanced matchup predictions and analytics"
+    }
 )
+
+# Note: Streamlit's automatic page navigation in top-left works with pages/ folder structure
+# We use custom navigation in sidebar, but both work - the top menu is Streamlit's default
 
 # Custom CSS for modern styling
 st.markdown("""

@@ -16,16 +16,19 @@ from app.utils.app_helpers import cached_db_query
 
 
 def show():
-    st.title("📈 League Standings")
+    st.title("📈 League Standings & Recent Results")
     st.markdown("---")
     
-    tab1, tab2 = st.tabs(["American League", "National League"])
+    tab1, tab2, tab3 = st.tabs(["American League", "National League", "Recent Results"])
     
     with tab1:
         show_al_standings()
     
     with tab2:
         show_nl_standings()
+    
+    with tab3:
+        show_recent_results()
 
 
 def show_al_standings():
@@ -63,15 +66,15 @@ def show_al_standings():
     
     with col1:
         st.markdown("#### AL East")
-        st.dataframe(pd.DataFrame(al_east), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(al_east), width='stretch', hide_index=True)
     
     with col2:
         st.markdown("#### AL Central")
-        st.dataframe(pd.DataFrame(al_central), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(al_central), width='stretch', hide_index=True)
     
     with col3:
         st.markdown("#### AL West")
-        st.dataframe(pd.DataFrame(al_west), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(al_west), width='stretch', hide_index=True)
 
 
 def show_nl_standings():
@@ -108,13 +111,32 @@ def show_nl_standings():
     
     with col1:
         st.markdown("#### NL East")
-        st.dataframe(pd.DataFrame(nl_east), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(nl_east), width='stretch', hide_index=True)
     
     with col2:
         st.markdown("#### NL Central")
-        st.dataframe(pd.DataFrame(nl_central), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(nl_central), width='stretch', hide_index=True)
     
     with col3:
         st.markdown("#### NL West")
-        st.dataframe(pd.DataFrame(nl_west), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(nl_west), width='stretch', hide_index=True)
+
+
+def show_recent_results():
+    """Show recent game results"""
+    st.subheader("📊 Recent Game Results")
+    
+    st.info("📊 Recent results. In production, this would query from your database or MLB API")
+    
+    # Placeholder recent results
+    recent_games = {
+        'Date': ['2024-12-25', '2024-12-25', '2024-12-25', '2024-12-24', '2024-12-24'],
+        'Away Team': ['Yankees', 'Dodgers', 'Astros', 'Braves', 'Orioles'],
+        'Away Score': [5, 3, 7, 4, 2],
+        'Home Team': ['Red Sox', 'Giants', 'Mariners', 'Phillies', 'Rays'],
+        'Home Score': [3, 1, 2, 6, 0],
+        'Result': ['Yankees W', 'Dodgers W', 'Astros W', 'Phillies W', 'Orioles W']
+    }
+    
+    st.dataframe(pd.DataFrame(recent_games), width='stretch', hide_index=True)
 

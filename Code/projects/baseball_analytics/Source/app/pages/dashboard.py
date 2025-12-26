@@ -65,7 +65,7 @@ def show():
                 names=grade_counts.index,
                 title="Pitchers by Grade"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     with col2:
         if not hitters_df.empty:
@@ -76,7 +76,7 @@ def show():
                 names=grade_counts.index,
                 title="Hitters by Grade"
             )
-            st.plotly_chart(fig, use_container_width=True)
+            st.plotly_chart(fig, width='stretch')
     
     # Top players
     st.markdown("---")
@@ -87,7 +87,7 @@ def show():
         if not pitchers_df.empty:
             top_pitchers = pitchers_df.head(10)[['full_name', 'overall_grade', 'pitcher_archetype_label']]
             top_pitchers.columns = ['Name', 'Grade', 'Archetype']
-            st.dataframe(top_pitchers, use_container_width=True, hide_index=True)
+            st.dataframe(top_pitchers, width='stretch', hide_index=True)
         else:
             st.info("No pitcher data available")
     
@@ -96,7 +96,7 @@ def show():
         if not hitters_df.empty:
             top_hitters = hitters_df.head(10)[['full_name', 'overall_grade', 'hitter_archetype_label']]
             top_hitters.columns = ['Name', 'Grade', 'Archetype']
-            st.dataframe(top_hitters, use_container_width=True, hide_index=True)
+            st.dataframe(top_hitters, width='stretch', hide_index=True)
         else:
             st.info("No hitter data available")
 
