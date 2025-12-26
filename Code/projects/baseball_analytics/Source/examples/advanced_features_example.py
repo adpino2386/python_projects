@@ -35,7 +35,7 @@ from utils.matchup_predictor import (
 )
 from dotenv import load_dotenv
 import pandas as pd
-
+engine = create_connection_postgresql() 
 
 def example_historical_matchup():
     """Example: Get historical matchup data between pitcher and hitter"""
