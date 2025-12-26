@@ -116,12 +116,145 @@ This module is designed to be the backend foundation for a web application. Sugg
    - Consider caching archetype data (doesn't change frequently)
    - Cache matchup calculations for performance
 
+## Advanced Features
+
+The module now includes several advanced features:
+
+### 1. Historical Matchup Data
+```python
+from utils.matchup_predictor import get_historical_matchup
+
+historical = get_historical_matchup(engine, pitcher_id, hitter_id)
+# Returns: wOBA, whiff rate, hits, HRs, strikeouts, etc.
+```
+
+### 2. Expected Statistics Prediction
+```python
+from utils.matchup_predictor import predict_expected_statistics
+
+expected = predict_expected_statistics(pitcher, lineup)
+# Returns: expected runs, hits, strikeouts, WHIP, ERA, etc.
+```
+
+### 3. Matchup Confidence Scoring
+```python
+from utils.matchup_predictor import calculate_matchup_confidence
+
+confidence = calculate_matchup_confidence(pitcher, hitter)
+# Returns: 0-100 confidence score based on data quality and sample size
+```
+
+### 4. Archetype Compatibility Analysis
+```python
+from utils.matchup_predictor import get_archetype_compatibility
+
+compatibility = get_archetype_compatibility(pitcher_archetype, hitter_archetype)
+# Returns: compatibility score and reasoning
+```
+
+### 5. Team-Level Matchup Analysis
+```python
+from utils.matchup_predictor import analyze_team_matchup
+
+team_analysis = analyze_team_matchup(pitcher, opposing_lineup, own_lineup)
+# Returns: Full team analysis including lineup quality comparisons
+```
+
+### 6. Bulk Predictions
+```python
+from utils.matchup_predictor import predict_bulk_matchups
+
+matchups = [
+    {'pitcher_name': 'Gerrit Cole', 'hitter_names': [...]},
+    # ... more matchups
+]
+results = predict_bulk_matchups(engine, matchups)
+```
+
+### 7. Enhanced Matchups with History
+```python
+from utils.matchup_predictor import enhance_matchup_with_history
+
+matchup = predict_individual_matchup(pitcher, hitter)
+enhanced = enhance_matchup_with_history(engine, pitcher, hitter, matchup)
+# Adjusts prediction based on actual historical performance
+```
+
+See `examples/advanced_features_example.py` for detailed usage examples of all advanced features.
+
+### 8. Lineup Optimization
+```python
+from utils.matchup_predictor import optimize_lineup_order
+
+optimized = optimize_lineup_order(pitcher, lineup)
+# Returns: Suggested batting order (1-9) based on matchup strengths
+```
+
+### 9. Recent Form Adjustments
+```python
+from utils.matchup_predictor import get_recent_form, adjust_for_recent_form
+
+pitcher_form = get_recent_form(engine, pitcher_id, 'pitcher', days=30)
+adjusted = adjust_for_recent_form(prediction, pitcher_form, hitter_forms)
+# Adjusts predictions based on recent performance
+```
+
+### 10. Pitcher Comparison
+```python
+from utils.matchup_predictor import compare_pitchers_vs_lineup
+
+comparison = compare_pitchers_vs_lineup(engine, [pitcher_id1, pitcher_id2], lineup)
+# Compare multiple pitchers against the same lineup
+```
+
+### 11. Situational Analysis
+```python
+from utils.matchup_predictor import analyze_situational_matchup
+
+analysis = analyze_situational_matchup(pitcher, hitter, situation='clutch')
+# Analyze matchups in specific game situations (clutch, two-strikes, etc.)
+```
+
+### 12. Game Simulation
+```python
+from utils.matchup_predictor import simulate_game
+
+simulation = simulate_game(pitcher, lineup, n_simulations=1000)
+# Monte Carlo simulation of game outcomes
+```
+
+### 13. Start/Sit Recommendations
+```python
+from utils.matchup_predictor import get_start_sit_recommendations
+
+recommendations = get_start_sit_recommendations(pitcher, available_hitters, lineup_size=9)
+# Recommend which hitters to start or sit
+```
+
+### 14. Visualization Data
+```python
+from utils.matchup_predictor import prepare_visualization_data
+
+viz_data = prepare_visualization_data(prediction)
+# Prepare data formatted for charts and visualizations
+```
+
+### 15. Matchup Value Calculation
+```python
+from utils.matchup_predictor import calculate_matchup_value
+
+value = calculate_matchup_value(pitcher, hitter, context={'hitter_salary': 3500})
+# Calculate matchup value for DFS, betting, etc.
+```
+
+See `examples/premium_features_example.py` for detailed usage examples of all premium features.
+
 ## Future Enhancements
 
 Potential improvements for the web app:
-- Historical matchup data integration
-- Team-level aggregation
-- Daily game predictions for all MLB games
-- Advanced metrics (expected runs, strikeout probability, etc.)
+- Park factor adjustments
+- Weather condition integration
+- Lineup optimization suggestions
 - Machine learning model integration for win probability refinement
+- Real-time game tracking and live prediction updates
 
