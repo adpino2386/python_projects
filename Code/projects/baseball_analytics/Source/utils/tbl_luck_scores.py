@@ -2,8 +2,8 @@ import pandas as pd
 from sqlalchemy.engine import Engine
 import pandas as pd
 from datetime import date, timedelta
-from sqlalchemy import text
 from datetime import datetime
+from sqlalchemy import text
 
 
 def calculate_luck_scores(engine: Engine, min_ab= 25):

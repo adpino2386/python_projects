@@ -5,6 +5,12 @@ from sklearn.ensemble import IsolationForest
 from sklearn.preprocessing import StandardScaler
 from sqlalchemy.engine import Engine
 from sqlalchemy import text
+from datetime import date, timedelta
+from datetime import datetime
+import joblib
+import os
+
+from dotenv import load_dotenv
 
 def create_dim_pitcher_archetypes(engine: Engine):
     try:
@@ -14,8 +20,7 @@ def create_dim_pitcher_archetypes(engine: Engine):
             Synthesizes pitching identity (GMM) with performance outcomes (Whiff/Barrel),
             Perceived Power (Extension), and Vertical Separation.
             """
-            
-            # 1. Identity Features (Physical & Tactical only)
+            # 1. Identity Features
             identity_features = [
                 'ffour_usage', 'sinker_usage', 'bb_usage', 'offspeed_usage',
                 'ffour_vaa_pct', 'sinker_vaa_pct', 'bb_vaa_pct', 'offspeed_vaa_pct',
@@ -29,195 +34,155 @@ def create_dim_pitcher_archetypes(engine: Engine):
                 (df['velo_pct'] * 0.05)
             ).round(1)
 
-            # 3. Clustering (Archetype Definition)
-            scaler = StandardScaler()
-            scaled_identity = scaler.fit_transform(df[identity_features].fillna(0))
+            # 1. Load the "Frozen" Models
+            # scaler = joblib.load('pitcher_scaler_v1.pkl')
+            # gmm    = joblib.load('pitcher_model_v1.pkl')
             
-            gmm = GaussianMixture(n_components=7, random_state=42)
-            df['style_cluster'] = gmm.fit_predict(scaled_identity)
+            # # This gets the path to the 'utils' folder
+            # CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 
-            # 4. Outlier Detection (Unicorns)
+            # # This moves UP one level to 'Source', then DOWN into 'input'
+            # # It creates an absolute path that works regardless of where you run main.py from
+            # SCALER_PATH = os.path.join(CURRENT_DIR, '..', 'input', 'pitcher_scaler_v1.pkl')
+            # MODEL_PATH = os.path.join(CURRENT_DIR, '..', 'input', 'pitcher_model_v1.pkl')
+
+            # # Now load using these constructed paths
+            # scaler = joblib.load(SCALER_PATH)
+            # gmm    = joblib.load(MODEL_PATH)
+            
+            # 1. Load the .env file 
+            # Since .env is in the same folder as this script, we can just load it
+            load_dotenv()
+
+            # 2. Get the path from the environment variable
+            # If it's not found, we provide a 'fallback' default
+            input_folder = os.getenv('INPUT_DIR', '../input')
+
+            # 3. Construct the full paths to your files
+            # We use abspath to make sure Python doesn't get confused by the current working directory
+            base_path = os.path.dirname(os.path.abspath(__file__))
+            scaler_path = os.path.abspath(os.path.join(base_path, input_folder, 'pitcher_scaler_v1.pkl'))
+            model_path = os.path.abspath(os.path.join(base_path, input_folder, 'pitcher_model_v1.pkl'))
+
+            # 4. Load the files
+            scaler = joblib.load(scaler_path)
+            gmm    = joblib.load(model_path)
+            
+            # 3. Clustering (Archetype Definition)
+            #scaler = StandardScaler()
+            # Filling NaNs with 0 to ensure the scaler doesn't fail
+            # scaled_identity = scaler.fit_transform(df[identity_features].fillna(0))
+            
+            # 2. Use the frozen scaler (DO NOT use fit_transform)
+            # We use .transform() so we measure new data by OLD standards
+            scaled_identity = scaler.transform(df[identity_features].fillna(0))
+                
+            # gmm = GaussianMixture(n_components=7, random_state=42)
+            # df['style_cluster'] = gmm.fit_predict(scaled_identity)
+            
+            # 3. Use the frozen GMM (DO NOT use fit_predict)
+            # This ensures Cluster 2 ALWAYS = "Heavy Sinker Specialist"
+            df['style_cluster'] = gmm.predict(scaled_identity)
+
+            
+            # # Save the scaler and model for future use
+            # joblib.dump(scaler, 'pitcher_scaler_v1.pkl')
+            # joblib.dump(gmm, 'pitcher_model_v1.pkl')
+            # print(" Models saved to your project folder!")
+
+            # 4. Define the Tactical Labels (Mapped from your Profile Results)
+            cluster_map = {
+                    0: "Diverse Technician",
+                    1: "High-Octane Power Arm",
+                    2: "Elite Contact Manager",
+                    3: "Corner Specialist",
+                    4: "Vertical Specialist",
+                    5: "Versatile Tactician",
+                    6: "Vertical Power Lead"
+                }
+            df['pitcher_archetype_label'] = df['style_cluster'].map(cluster_map)
+
+            # 5. Outlier Detection
             iso = IsolationForest(contamination=0.04, random_state=42)
             df['is_unicorn'] = iso.fit_predict(scaled_identity)
             
-            # def calculate_pitcher_grade(row):
-            #     # 1. Lethality (Results)
-            #     # We give more weight to Suppression for Starters to reward Skubal's profile
-            #     lethality = (row['whiff_pct'] * 0.5 + row['suppression_pct'] * 0.4 + row['movement_gap_pct'] * 0.1)
+            # def profile_pitcher_clusters(df):
+            #     """Temporary function to profile the clusters.
+
+            #     Args:
+            #         df (_type_): _description_
+
+            #     Returns:
+            #         _type_: _description_
+            #     """
+            #     # Defining the tactical metrics I want to see              
+            #     profile_metrics = [
+            #     'style_cluster', 
+            #     # DNA
+            #     'ffour_usage', 'sinker_usage', 'ffour_vaa_pct', 'velo_gap_pct', 'paint_pct',
+            #     # RESULTS
+            #     'fb_velo', 'whiff_pct', 'suppression_pct']
                 
-            #     # 2. Physicality (Tools)
-            #     physicality = (row['perceived_velo_pct'] * 0.45 + row['ffour_vaa_pct'] * 0.45 + row['extension_pct'] * 0.1)
+            #     # Calculate the mean for each cluster
+            #     profile = df[profile_metrics].groupby('style_cluster').mean().round(2)
                 
-            #     # 3. Execution (Stability)
-            #     #execution = (row['command_pct'] * 0.45 + row['paint_pct'] * 0.45 + row['neutrality_pct'] * 0.1)
-                
-            #     # Execution: Now includes Tunneling (0-100 percentile)
-            #     # Give Tunneling 20% of the Execution weight
-            #     execution = (row['command_pct'] * 0.35 + 
-            #                  row['paint_pct'] * 0.35 + 
-            #                  row['tunnel_pct'] * 0.20 + 
-            #                  row['neutrality_pct'] * 0.10)
-                
-            #     # 4. Weighted GPA Score
-            #     base_gpa = (lethality * 0.50) + (physicality * 0.30) + (execution * 0.20)
-                
-            #     # 5. THE STARTER CURVE (The "Skubal Adjustment")
-            #     # If they are a starter, we boost their GPA by 5 points to account for the difficulty of volume
-            #     if row['is_starter'] == 1:
-            #         base_gpa += 5
-                
-            #     # 2. THE "SAMPLE SIZE" PENALTY (NEW)
-            #     # If a pitcher has fewer than 5 appearances, they cannot get an A+ 
-            #     # because the data isn't "stable" yet.
-            #     if row['total_appearances'] < 5:
-            #         base_gpa -= 10
-                
-            #     # 6. Final Mapping (More generous thresholds for A+)
-            #     if base_gpa >= 85: return 'A+'
-            #     elif base_gpa >= 75: return 'A'
-            #     elif base_gpa >= 63: return 'B'  # Slightly wider B range
-            #     elif base_gpa >= 50: return 'C'
-            #     elif base_gpa >= 35: return 'D'
-            #     else: return 'F'
+            #     # Sort by whiff_pct to see the "Dominance Hierarchy"
+            #     #return profile.sort_values(by='whiff_pct', ascending=False)
+            #     return df[profile_metrics].groupby('style_cluster').mean().round(2)
             
+            # # Usage:
+            # pitcher_profile_table = profile_pitcher_clusters(df)
+            # print(pitcher_profile_table)
+            
+            # 6. Grading Logic
             def calculate_pitcher_grade(row):
-                # 1. STUFF+ (Physicality)
-                # This is the "Weapon" - 60% of the overall grade
                 stuff_plus = row['stuff_plus_pct']
-                
-                # 2. LOCATION+ (Surgicality)
-                # This is the "Aim" - 40% of the overall grade
                 location_plus = row['location_plus_pct']
                 
-                # 3. PITCHING+ (The Master Score)
-                # Note: We weigh Stuff higher because it's harder to find/teach
                 base_score = (stuff_plus * 0.60) + (location_plus * 0.40)
                 
-                # 4. VOLUME/STARTER ADJUSTMENTS
-                if row['is_starter'] == 1:
-                    base_score += 5  # The "Skubal Boost"
-                
-                if row['total_appearances'] < 5:
-                    base_score -= 10 # The "Sample Size Penalty"
+                if row.get('is_starter') == 1: base_score += 5 
+                if row.get('total_appearances', 0) < 5: base_score -= 10 
 
-                # 5. FINAL LETTER GRADE
-                if base_score >= 85: 
-                    grade = 'A+'
-                elif base_score >= 75: 
-                    grade = 'A'
-                elif base_score >= 60: 
-                    grade = 'B'
-                elif base_score >= 45: 
-                    grade = 'C'
-                else: 
-                    grade = 'F'
+                if base_score >= 85: grade = 'A+'
+                elif base_score >= 75: grade = 'A'
+                elif base_score >= 60: grade = 'B'
+                elif base_score >= 45: grade = 'C'
+                else: grade = 'F'
                     
                 return grade, stuff_plus, location_plus
 
-            #df['overall_grade'] = df.apply(calculate_pitcher_grade, axis=1)
             df[['overall_grade', 'stuff_plus_final', 'location_plus_final']] = df.apply(
                 lambda x: pd.Series(calculate_pitcher_grade(x)), axis=1
             )
 
-            # def generate_scouting_report(row):
-            #     tags = []
-            #     summary = f"[{row['overall_grade']} GRADE] "
-                
-            #     # 1. Framework Identity
-            #     s_plus = row['stuff_plus_pct']
-            #     l_plus = row['location_plus_pct']
-                
-            #     # THE "STUFF" LABELS
-            #     if s_plus >= 90:
-            #         tags.append("💣 PURE FILTH")
-            #     elif s_plus <= 20:
-            #         tags.append("📉 LACKS BITE")
-
-            #     # THE "LOCATION" LABELS
-            #     if l_plus >= 90:
-            #         tags.append("🎯 SURGEON")
-            #     elif l_plus <= 20:
-            #         tags.append("🏹 WILD THING")
-
-            #     # 2. COMBINATION SCOUTING (The "Pitching+" Profiles)
-            #     if s_plus >= 85 and l_plus >= 85:
-            #         tags.append("👑 DOMINANT FORCE")
-            #         summary += "A rare combination of elite physical tools and surgical precision. "
-                
-            #     elif s_plus >= 85 and l_plus <= 40:
-            #         tags.append("💎 RAW DIAMOND")
-            #         summary += "Elite stuff that is currently unrefined; a primary candidate for a pitching lab overhaul. "
-                    
-            #     elif l_plus >= 85 and s_plus <= 40:
-            #         tags.append("🎓 THE PROFESSOR")
-            #         summary += "Succeeds through elite sequencing and location despite below-average raw velocity. "
-
-            #     # 3. KEEPING YOUR FAVORITES
-            #     if row['tunnel_pct'] >= 90: tags.append("🧬 TUNNELER")
-            #     if row['is_unicorn'] == -1: tags.append("🦄 UNICORN")
-                
-            #     return " | ".join(list(set(tags))), summary.strip()
-
+            # 7. Scouting Report Generation
             def generate_scouting_report(row):
                 tags = []
-                # Start the summary with the Grade and Handedness
-                summary_header = f"[{row['overall_grade']} GRADE] ({row['hand']})"
+                # Header includes Archetype Label
+                summary_header = f"[{row['overall_grade']} {row['pitcher_archetype_label']}] ({row['hand']})"
                 
-                # 1. CORE IDENTITY TAGS (Physicality)
-                s_plus = row['stuff_plus_pct']
-                l_plus = row['location_plus_pct']
+                # Tags
+                if row['stuff_plus_pct'] >= 90: tags.append("💣 PURE FILTH")
+                if row['location_plus_pct'] >= 90: tags.append("🎯 SURGEON")
+                if row['is_unicorn'] == -1: tags.append("🦄 UNICORN")
                 
-                if s_plus >= 90: tags.append("PURE FILTH")
-                elif s_plus <= 20: tags.append("LACKS BITE")
-
-                if l_plus >= 90: tags.append("SURGEON")
-                elif l_plus <= 20: tags.append("WILD THING")
-
-                # 2. MATCHUP TACTICS (New Logic)
-                # We use the columns we just built in SQL
-                profile = row['attack_profile']
-                role = row['matchup_role']
+                # Platoon Logic
                 platoon = row['platoon_identity']
-                
-                # Build the Narrative Summary
-                analysis = f"Identified as a {role}. "
-                
-                if "NORTH-SOUTH" in profile:
-                    analysis += "Wins vertically with high-carry fastballs; elite matchup against low-ball hitters. "
-                elif "EAST-WEST" in profile:
-                    analysis += "Heavy horizontal movement profile; ideal for inducing double plays. "
-                
-                if platoon == "MATCHUP PROOF":
-                    tags.append("PLATOON NEUTRAL")
-                    analysis += "Maintains effectiveness regardless of batter handedness. "
-                elif platoon == "PLATOON SENSITIVE":
-                    tags.append("SPLIT RISK")
-                    analysis += "Performance drops significantly against opposite-handed hitters. "
+                if platoon == "MATCHUP PROOF": tags.append("🛡️ PLATOON NEUTRAL")
+                elif platoon == "PLATOON SENSITIVE": tags.append("⚠️ SPLIT RISK")
 
-                # 3. SPECIAL TRAITS
-                if row['tunnel_pct'] >= 90: tags.append("TUNNELER")
-                if row['is_unicorn'] == -1: tags.append("UNICORN")
-                if row['breakout_potential'] != 'OPTIMIZED':
-                    tags.append("BREAKOUT")
-                    analysis += f"Tactical Alert: {row['breakout_potential']}. "
+                # Narrative Body
+                analysis = f"Tactically identified as a {row['matchup_role']}. "
+                if "NORTH-SOUTH" in row['attack_profile']:
+                    analysis += "Dominates vertically; elite matchup vs low-ball hitters. "
+                elif "EAST-WEST" in row['attack_profile']:
+                    analysis += "East-West specialist; ideal for inducing ground balls. "
 
-                # Create the final string
                 tag_str = " | ".join(list(set(tags)))
-                final_summary = f"{summary_header} {tag_str} — {analysis.strip()}"
-                
-                return tag_str, final_summary
+                return tag_str, f"{summary_header} — TAGS: {tag_str} — SUMMARY: {analysis.strip()}"
 
-            # Apply to your DataFrame
-            results = df.apply(generate_scouting_report, axis=1)
-            df['archetype_tags'], df['scouting_summary'] = zip(*results)
-
-            # Apply and split into two columns
-            results = df.apply(generate_scouting_report, axis=1)
-            df['archetype_tags'], df['scouting_summary'] = zip(*results)
-            
-            # # Apply Logic
-            # results = df.apply(generate_scouting_report, axis=1)
-            # df['archetype_tags'], df['scouting_summary'] = zip(*results)
+            df['archetype_tags'], df['scouting_summary'] = zip(*df.apply(generate_scouting_report, axis=1))
             
             return df
 
@@ -228,18 +193,18 @@ def create_dim_pitcher_archetypes(engine: Engine):
             """
             query = text("""
             WITH attack_zone_stats AS (
-            SELECT 
-                p.*,
-                -- Define Command/Paint Zones
-                CASE 
-                    WHEN ABS(p.plate_x) <= 0.67 AND p.plate_z BETWEEN (p.sz_bot + 0.33) AND (p.sz_top - 0.33) THEN 'heart'
-                    WHEN ABS(p.plate_x) <= 1.1 AND p.plate_z BETWEEN (p.sz_bot - 0.33) AND (p.sz_top + 0.33) THEN 'shadow'
-                    WHEN ABS(p.plate_x) <= 1.5 AND p.plate_z BETWEEN (p.sz_bot - 0.75) AND (p.sz_top + 0.75) THEN 'chase'
-                    ELSE 'waste'
-                END as attack_zone,
-                CASE WHEN p.description IN ('swinging_strike', 'swinging_strike_blocked', 'missed_bunt') THEN 1 ELSE 0 END as is_whiff,
-                CASE WHEN p.description IN ('swinging_strike', 'swinging_strike_blocked', 'missed_bunt', 'foul', 'foul_tip', 'hit_into_play') THEN 1 ELSE 0 END as is_swing
-            FROM fact_statcast_pitches p
+                SELECT 
+                    p.*,
+                    -- Define Command/Paint Zones
+                    CASE 
+                        WHEN ABS(p.plate_x) <= 0.67 AND p.plate_z BETWEEN (p.sz_bot + 0.33) AND (p.sz_top - 0.33) THEN 'heart'
+                        WHEN ABS(p.plate_x) <= 1.1 AND p.plate_z BETWEEN (p.sz_bot - 0.33) AND (p.sz_top + 0.33) THEN 'shadow'
+                        WHEN ABS(p.plate_x) <= 1.5 AND p.plate_z BETWEEN (p.sz_bot - 0.75) AND (p.sz_top + 0.75) THEN 'chase'
+                        ELSE 'waste'
+                    END as attack_zone,
+                    CASE WHEN p.description IN ('swinging_strike', 'swinging_strike_blocked', 'missed_bunt') THEN 1 ELSE 0 END as is_whiff,
+                    CASE WHEN p.description IN ('swinging_strike', 'swinging_strike_blocked', 'missed_bunt', 'foul', 'foul_tip', 'hit_into_play') THEN 1 ELSE 0 END as is_swing
+                FROM fact_statcast_pitches p
             ),
             vaa_base_calc AS (
                 SELECT 
@@ -271,7 +236,7 @@ def create_dim_pitcher_archetypes(engine: Engine):
                     AVG(CASE WHEN p.stand = 'R' THEN p.estimated_woba_using_speedangle END) as xwoba_vs_rhb,           
                     
                     COALESCE(ROUND(AVG(CASE WHEN p.pitch_type IN ('FA', 'FF', 'FT', 'FC', 'SI') THEN p.release_speed END)::numeric, 1), 0) as fb_velo,
-                    COALESCE(ROUND(AVG(CASE WHEN p.pitch_type IN ('CH', 'FS', 'FO', 'SC', 'ST', 'SL', 'KC', 'GY', 'SV', 'CS', 'KN', 'EP') THEN p.release_speed END)::numeric, 1), 0) as offspeed_velo,                                                                                                                                                                    
+                    COALESCE(ROUND(AVG(CASE WHEN p.pitch_type IN ('CH', 'FS', 'FO', 'SC', 'ST', 'SL', 'KC', 'GY', 'SV', 'CS', 'KN', 'EP') THEN p.release_speed END)::numeric, 1), 0) as offspeed_velo,                                                                                                                                                                                                                                                                                                                                                                                                                    
                     
                     ROUND(100.0 * SUM(CASE WHEN p.pitch_type IN ('FA', 'FF', 'FC') THEN 1 ELSE 0 END) / COUNT(*), 1) as ffour_usage,
                     ROUND(100.0 * SUM(CASE WHEN p.pitch_type IN ('SI', 'FT') THEN 1 ELSE 0 END) / COUNT(*), 1) as sinker_usage,
@@ -311,15 +276,21 @@ def create_dim_pitcher_archetypes(engine: Engine):
                     ROUND((PERCENT_RANK() OVER (ORDER BY whiff_rate_raw))::numeric, 2) * 100 as whiff_pct,
                     ROUND((PERCENT_RANK() OVER (ORDER BY barrel_rate_raw DESC))::numeric, 2) * 100 as suppression_pct,
                     ROUND((PERCENT_RANK() OVER (ORDER BY command_raw))::numeric, 2) * 100 as command_pct,
-                    ROUND((PERCENT_RANK() OVER (ORDER BY paint_raw))::numeric, 2) * 100 as paint_pct,            
+                    ROUND((PERCENT_RANK() OVER (ORDER BY paint_raw))::numeric, 2) * 100 as paint_pct,             
                     ROUND((PERCENT_RANK() OVER (ORDER BY perceived_fb_velo))::numeric, 2) * 100 as perceived_velo_pct,
                     COALESCE(ROUND((PERCENT_RANK() OVER (PARTITION BY (offspeed_usage > 0 OR sinker_usage > 0) ORDER BY v_break_gap_raw))::numeric, 2) * 100, 0) as movement_gap_pct,
-                    ROUND((PERCENT_RANK() OVER (ORDER BY avg_extension))::numeric, 2) * 100 as extension_pct,           
+                    ROUND((PERCENT_RANK() OVER (ORDER BY avg_extension))::numeric, 2) * 100 as extension_pct,            
                     COALESCE(ROUND((PERCENT_RANK() OVER (PARTITION BY (ffour_usage > 0) ORDER BY ffour_vaa))::numeric, 2) * 100, 0) as ffour_vaa_pct,
                     COALESCE(ROUND((PERCENT_RANK() OVER (PARTITION BY (sinker_usage > 0) ORDER BY sinker_vaa DESC))::numeric, 2) * 100, 0) as sinker_vaa_pct,
                     COALESCE(ROUND((PERCENT_RANK() OVER (PARTITION BY (bb_usage > 0) ORDER BY bb_vaa DESC))::numeric, 2) * 100, 0) as bb_vaa_pct,
-                    COALESCE(ROUND((PERCENT_RANK() OVER (PARTITION BY (offspeed_usage > 0) ORDER BY offspeed_vaa DESC))::numeric, 2) * 100, 0) as offspeed_vaa_pct,
-                    ROUND((100 - (ABS(COALESCE(xwoba_vs_lhb, 0.320) - COALESCE(xwoba_vs_rhb, 0.320)) * 100))::numeric, 2) as neutrality_pct,
+                    COALESCE(ROUND((PERCENT_RANK() OVER (PARTITION BY (offspeed_usage > 0) ORDER BY offspeed_vaa DESC))::numeric, 2) * 100, 0) as offspeed_vaa_pct,     
+                    -- UPDATED NEUTRALITY CALCULATION
+                    ROUND(
+                        (1 - PERCENT_RANK() OVER (
+                            ORDER BY ABS(COALESCE(xwoba_vs_lhb, 0.320) - COALESCE(xwoba_vs_rhb, 0.320))
+                        ))::numeric, 2
+                    ) * 100 as neutrality_pct,
+                    
                     ROUND((PERCENT_RANK() OVER (ORDER BY tunnel_raw DESC))::numeric, 2) * 100 as tunnel_pct,
                     ROUND((PERCENT_RANK() OVER (ORDER BY vaa_above_expected_raw))::numeric, 2) * 100 as vaa_plus_pct,
                     ROUND((PERCENT_RANK() OVER (ORDER BY stuff_raw))::numeric, 2) * 100 as stuff_plus_pct,
@@ -330,26 +301,30 @@ def create_dim_pitcher_archetypes(engine: Engine):
                 CONCAT(pn.first_name_chadwick, ' ', pn.last_name_chadwick) as full_name,
                 rs.p_throws as hand,
                 rs.*,
-                -- MATCHUP COLUMN 1: ATTACK PROFILE (Rise vs Run)
+                -- MATCHUP COLUMN 1: ATTACK PROFILE (UPDATED LOGIC)
                 CASE 
-                    WHEN vaa_plus_pct > 75 THEN 'NORTH-SOUTH (High Rise)'
-                    WHEN sinker_usage > 25 THEN 'EAST-WEST (Sinker/Run)'
-                    WHEN movement_gap_pct > 75 THEN 'DECEPTIVE (High Break)'
+                    WHEN vaa_plus_pct > 70 AND ffour_usage > 40 THEN 'NORTH-SOUTH (High Rise)'
+                    WHEN sinker_usage > 25 AND movement_gap_pct > 60 THEN 'EAST-WEST (Heavy Run)'
+                    WHEN bb_usage > 35 AND movement_gap_pct > 75 THEN 'LATERAL (Sweeper/Slide)'
+                    WHEN tunnel_pct > 75 AND movement_gap_pct > 60 THEN 'DECEPTIVE (Tunneling)'
+                    WHEN (vaa_plus_pct BETWEEN 40 AND 60) AND (movement_gap_pct BETWEEN 40 AND 60) THEN 'NEUTRAL/VERSATILE'
                     ELSE 'BALANCED'
-                END as attack_profile,
+                END as attack_profile,   
                 -- MATCHUP COLUMN 2: ROLE IDENTITY
                 CASE 
                     WHEN rs.whiff_pct > 75 AND rs.location_plus_pct > 75 THEN 'DOMINANT ACE'
                     WHEN rs.whiff_pct > 75 AND rs.location_plus_pct < 40 THEN 'POWER ARMS (High Risk)'
                     WHEN rs.location_plus_pct > 75 AND rs.whiff_pct < 45 THEN 'PITCH TO CONTACT SURGEON'
                     ELSE 'ROTATION STABILIZER'
-                END as matchup_role,
+                END as matchup_role,   
                 -- MATCHUP COLUMN 3: PLATOON RESISTANCE
                 CASE 
+                    WHEN rs.total_pitches < 800 THEN 'INSUFFICIENT DATA'
                     WHEN rs.neutrality_pct > 75 THEN 'MATCHUP PROOF'
                     WHEN rs.neutrality_pct < 35 THEN 'PLATOON SENSITIVE'
                     ELSE 'STANDARD SPLITS'
                 END as platoon_identity,
+                
                 ROUND((perceived_velo_pct * 0.25 + ffour_vaa_pct * 0.25 + whiff_pct * 0.5), 0) as ffour_quality_score,
                 ROUND((movement_gap_pct * 0.25 + offspeed_vaa_pct * 0.25 + whiff_pct * 0.5), 0) as offspeed_quality_score,   
                 CASE 
@@ -369,6 +344,10 @@ def create_dim_pitcher_archetypes(engine: Engine):
         # Execute function
         pitcher_archetype_df = update_dim_pitcher_archetypes(engine)
         
+        # Add the calculation_date
+        pitcher_archetype_df['calculation_date'] = datetime.now()
+        
+        # Load to SQL
         pitcher_archetype_df.to_sql(
         'dim_pitcher_archetypes', 
         engine, 
