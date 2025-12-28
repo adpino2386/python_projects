@@ -93,7 +93,7 @@ def show():
     
     with col1:
         st.markdown("""
-        <div style='padding: 1.5rem; background-color: #f0f2f6; border-radius: 0.5rem; border-left: 4px solid #ffd700;'>
+        <div style='padding: 1.5rem; background-color: #1B1B1E; border-radius: 0.5rem; border-left: 4px solid #ffd700;'>
             <h4>🎯 Game Predictions</h4>
             <ul>
                 <li>Win probabilities</li>
@@ -105,7 +105,7 @@ def show():
     
     with col2:
         st.markdown("""
-        <div style='padding: 1.5rem; background-color: #f0f2f6; border-radius: 0.5rem; border-left: 4px solid #ffd700;'>
+        <div style='padding: 1.5rem; background-color: #1B1B1E; border-radius: 0.5rem; border-left: 4px solid #ffd700;'>
             <h4>📊 Advanced Analytics</h4>
             <ul>
                 <li>Best/worst matchups</li>
@@ -117,7 +117,7 @@ def show():
     
     with col3:
         st.markdown("""
-        <div style='padding: 1.5rem; background-color: #f0f2f6; border-radius: 0.5rem; border-left: 4px solid #ffd700;'>
+        <div style='padding: 1.5rem; background-color: #1B1B1E; border-radius: 0.5rem; border-left: 4px solid #ffd700;'>
             <h4>🔥 Daily Insights</h4>
             <ul>
                 <li>Top hitters today</li>

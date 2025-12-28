@@ -1,9 +1,13 @@
 import os
 from sqlalchemy import create_engine
 from dotenv import load_dotenv
+from sqlalchemy.engine import Engine
+from sqlalchemy import text
 
-def connect_to_db():
-    # Load environment variables from a .env file
+def create_connection_postgresql():
+    print("🛜  Connecting to the database...")
+    
+    # Load environment variables from .env file
     load_dotenv()
 
     # Build the PostgreSQL connection string
@@ -12,6 +16,6 @@ def connect_to_db():
     # Create the engine object for connecting
     engine = create_engine(DB_URL)
 
-    print("Database connection established.")
+    print("   ✅ Database connection established.")
     
-    return
+    return engine
