@@ -39,30 +39,6 @@ def show_al_standings():
     # Placeholder data - in production, query from database
     # st.info("📊 Standings data. In production, this would query from my database or MLB API")
     
-    # al_east = {
-    #     'Team': ['Yankees', 'Orioles', 'Rays', 'Blue Jays', 'Red Sox'],
-    #     'W': [95, 93, 90, 85, 80],
-    #     'L': [67, 69, 72, 77, 82],
-    #     'PCT': [.586, .574, .556, .525, .494],
-    #     'GB': ['-', '2.0', '5.0', '10.0', '15.0']
-    # }
-    
-    # al_central = {
-    #     'Team': ['Guardians', 'Twins', 'Royals', 'Tigers', 'White Sox'],
-    #     'W': [92, 88, 82, 78, 75],
-    #     'L': [70, 74, 80, 84, 87],
-    #     'PCT': [.568, .543, .506, .481, .463],
-    #     'GB': ['-', '4.0', '10.0', '14.0', '17.0']
-    # }
-    
-    # al_west = {
-    #     'Team': ['Astros', 'Mariners', 'Rangers', 'Angels', 'Athletics'],
-    #     'W': [94, 91, 86, 81, 68],
-    #     'L': [68, 71, 76, 81, 94],
-    #     'PCT': [.580, .562, .531, .500, .420],
-    #     'GB': ['-', '3.0', '8.0', '13.0', '26.0']
-    # }
-    
     col1, col2, col3 = st.columns(3)
     
     # Call the function to display each division
@@ -71,48 +47,24 @@ def show_al_standings():
     with col1:
         st.markdown("#### AL East")
         #st.dataframe(pd.DataFrame(al_east), width='stretch', hide_index=True)
-        st.dataframe(all_standings['American League East'], width='content', hide_index=True)
+        st.dataframe(all_standings['American League East'], width='stretch', hide_index=True)
     
     with col2:
         st.markdown("#### AL Central")
         # st.dataframe(pd.DataFrame(al_central), width='stretch', hide_index=True)
-        st.dataframe(all_standings['American League Central'], width='content', hide_index=True)
+        st.dataframe(all_standings['American League Central'], width='stretch', hide_index=True)
     
     with col3:
         st.markdown("#### AL West")
         # st.dataframe(pd.DataFrame(al_west), width='stretch', hide_index=True)
-        st.dataframe(all_standings['American League West'], width='content', hide_index=True)
+        st.dataframe(all_standings['American League West'], width='stretch', hide_index=True)
 
 
 def show_nl_standings():
     """Show National League standings"""
     st.subheader("National League Standings")
     
-    st.info("📊 Standings data. In production, this would query from your database or MLB API")
-    
-    # nl_east = {
-    #     'Team': ['Braves', 'Phillies', 'Mets', 'Marlins', 'Nationals'],
-    #     'W': [98, 92, 88, 82, 76],
-    #     'L': [64, 70, 74, 80, 86],
-    #     'PCT': [.605, .568, .543, .506, .469],
-    #     'GB': ['-', '6.0', '10.0', '16.0', '22.0']
-    # }
-    
-    # nl_central = {
-    #     'Team': ['Brewers', 'Cubs', 'Reds', 'Cardinals', 'Pirates'],
-    #     'W': [91, 87, 83, 79, 74],
-    #     'L': [71, 75, 79, 83, 88],
-    #     'PCT': [.562, .537, .512, .488, .457],
-    #     'GB': ['-', '4.0', '8.0', '12.0', '17.0']
-    # }
-    
-    # nl_west = {
-    #     'Team': ['Dodgers', 'Padres', 'Giants', 'Diamondbacks', 'Rockies'],
-    #     'W': [100, 92, 87, 82, 70],
-    #     'L': [62, 70, 75, 80, 92],
-    #     'PCT': [.617, .568, .537, .506, .432],
-    #     'GB': ['-', '8.0', '13.0', '18.0', '30.0']
-    # }
+    #st.info("📊 Standings data. In production, this would query from your database or MLB API")
     
     col1, col2, col3 = st.columns(3)
     
@@ -122,17 +74,17 @@ def show_nl_standings():
     with col1:
         st.markdown("#### NL East")
         # st.dataframe(pd.DataFrame(nl_east), width='stretch', hide_index=True)
-        st.dataframe(all_standings['National League East'], width='content', hide_index=True)
+        st.dataframe(all_standings['National League East'], width='stretch', hide_index=True)
     
     with col2:
         st.markdown("#### NL Central")
         # st.dataframe(pd.DataFrame(nl_central), width='stretch', hide_index=True)
-        st.dataframe(all_standings['National League Central'], width='content', hide_index=True)
+        st.dataframe(all_standings['National League Central'], width='stretch', hide_index=True)
     
     with col3:
         st.markdown("#### NL West")
         # st.dataframe(pd.DataFrame(nl_west), width='stretch', hide_index=True)
-        st.dataframe(all_standings['National League West'], width='content', hide_index=True)
+        st.dataframe(all_standings['National League West'], width='stretch', hide_index=True)
 
 
 def show_recent_results():
@@ -154,44 +106,52 @@ def show_recent_results():
     st.dataframe(pd.DataFrame(recent_games), width='stretch', hide_index=True)
 
 
-
 def get_division_standings_dfs():
-    """get division standings as DataFrames and return as a dictionary
-
-    Returns:
-        dictionary: Dictionary of DataFrames for each division
-    """
-    # leagueId 103 is AL, 104 is NL. Using both gets the whole league.
-    standings_raw = statsapi.standings_data(leagueId="103,104")
+    """Fetches MLB standings, abbreviates team names, and formats for mobile."""
     
-    # This dictionary will hold { "Division Name": DataFrame }
+    TEAM_ABBR = {
+        'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
+        'Boston Red Sox': 'BOS', 'Chicago White Sox': 'CWS', 'Chicago Cubs': 'CHC',
+        'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
+        'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
+        'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
+        'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
+        'New York Yankees': 'NYY', 'Athletics': 'ATH', 'Philadelphia Phillies': 'PHI',
+        'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF',
+        'Seattle Mariners': 'SEA', 'St. Louis Cardinals': 'STL', 'Tampa Bay Rays': 'TB',
+        'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR', 'Washington Nationals': 'WSH'
+    }
+
+    # leagueId 103 is AL, 104 is NL
+    standings_raw = statsapi.standings_data(leagueId="103,104")
     division_dict = {}
 
     for division_id in standings_raw:
         div_name = standings_raw[division_id]['div_name']
         teams_list = standings_raw[division_id]['teams']
         
-        # Convert the list of team dicts directly to a DataFrame
         df = pd.DataFrame(teams_list)
         
-        # Optional: Reorder or filter columns to keep it clean
-        # TODO Calculate more columns like W%
-        # cols = ['name', 'w', 'l', 'gb', 'div_rank', 'wc_gb', 'wc_rank', 'league_rank']
-        cols = ['name', 'w', 'l', 'gb', 'wc_gb', 'wc_rank', 'league_rank']
-        df = df[cols]
+        # Abbreviate names to save horizontal space
+        df['name'] = df['name'].map(TEAM_ABBR).fillna(df['name'])
         
-        # Rename columns for clarity
-        df.rename(columns={
-            'name': 'Team',
+        # Calculate PCT and format as .XXX (MLB Style)
+        df['W%'] = df['w'] / (df['w'] + df['l']).replace(0, 1)
+        df['W%'] = df['W%'].apply(lambda x: '{:.3f}'.format(x).lstrip('0'))
+        # cols = ['name', 'w', 'l', 'gb', 'div_rank', 'wc_gb', 'wc_rank', 'league_rank']
+        
+        # Map raw fields to clean display names
+        cols_map = {
+            'name': 'TM',
             'w': 'W',
             'l': 'L',
+            'W%': 'PCT',
             'gb': 'GB',
-            'wc_gb': 'WC GB',
-            'wc_rank': 'WC Rank',
-            'league_rank': 'League Rank'
-        }, inplace=True)
-
-        # Set the Division Name as the key in the dictionary
+            'wc_gb': 'WCGB',
+            'league_rank': 'LG RNK'
+        }
+        
+        df = df[list(cols_map.keys())].rename(columns=cols_map)
         division_dict[div_name] = df
         
     return division_dict
