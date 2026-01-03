@@ -387,7 +387,7 @@ def analyze_matchup_summary(pitcher: Dict, lineup_df: pd.DataFrame) -> str:
 # ============================================================================
 
 def get_historical_matchup(engine: Engine, pitcher_id: int, hitter_id: int, 
-                          min_pitches: int = 10) -> Optional[Dict]:
+                        min_pitches: int = 10) -> Optional[Dict]:
     """
     Get historical matchup data between a specific pitcher and hitter.
     
@@ -729,7 +729,7 @@ def predict_bulk_matchups(engine: Engine, matchups: List[Dict]) -> pd.DataFrame:
 
 
 def enhance_matchup_with_history(engine: Engine, pitcher: Dict, hitter: Dict, 
-                                 matchup_result: Dict) -> Dict:
+                                matchup_result: Dict) -> Dict:
     """
     Enhance a matchup prediction with historical data if available.
     
@@ -831,11 +831,11 @@ def optimize_lineup_order(pitcher: Dict, lineup_df: pd.DataFrame) -> pd.DataFram
     optimized_lineup = lineup_analysis.sort_values('suggested_order').reset_index(drop=True)
     
     return optimized_lineup[['suggested_order', 'hitter_name', 'hitter_grade', 'combined_score', 
-                              'hitter_advantage', 'order_reason']]
+                            'hitter_advantage', 'order_reason']]
 
 
 def get_recent_form(engine: Engine, player_id: int, player_type: str = 'hitter', 
-                   days: int = 30) -> Optional[Dict]:
+                days: int = 30) -> Optional[Dict]:
     """
     Get recent performance form for a player (last N days).
     
@@ -910,7 +910,7 @@ def get_recent_form(engine: Engine, player_id: int, player_type: str = 'hitter',
 
 
 def adjust_for_recent_form(prediction: Dict, pitcher_form: Optional[Dict] = None,
-                          hitter_forms: Optional[List[Dict]] = None) -> Dict:
+                        hitter_forms: Optional[List[Dict]] = None) -> Dict:
     """
     Adjust matchup prediction based on recent form.
     
@@ -973,7 +973,7 @@ def adjust_for_recent_form(prediction: Dict, pitcher_form: Optional[Dict] = None
 
 
 def compare_pitchers_vs_lineup(engine: Engine, pitcher_ids: List[int], 
-                               lineup_df: pd.DataFrame) -> pd.DataFrame:
+                            lineup_df: pd.DataFrame) -> pd.DataFrame:
     """
     Compare multiple pitchers against the same lineup.
     
@@ -1139,7 +1139,7 @@ def simulate_game(pitcher: Dict, lineup_df: pd.DataFrame, n_simulations: int = 1
 
 
 def get_start_sit_recommendations(pitcher: Dict, available_hitters: pd.DataFrame,
-                                  lineup_size: int = 9) -> Dict:
+                                lineup_size: int = 9) -> Dict:
     """
     Recommend which hitters to start or sit based on matchup analysis.
     
@@ -1172,7 +1172,7 @@ def get_start_sit_recommendations(pitcher: Dict, available_hitters: pd.DataFrame
         'start': start_hitters[['hitter_name', 'hitter_grade', 'combined_score', 
                                 'hitter_advantage', 'reasons']].to_dict('records'),
         'sit': sit_hitters[['hitter_name', 'hitter_grade', 'combined_score', 
-                           'hitter_advantage', 'reasons']].to_dict('records'),
+                        'hitter_advantage', 'reasons']].to_dict('records'),
         'message': f'Recommended {lineup_size} starters based on matchup analysis'
     }
 
@@ -1213,7 +1213,7 @@ def prepare_visualization_data(prediction: Dict) -> Dict:
 
 
 def calculate_matchup_value(pitcher: Dict, hitter: Dict, 
-                           context: Optional[Dict] = None) -> Dict:
+                        context: Optional[Dict] = None) -> Dict:
     """
     Calculate the "value" of a matchup (useful for DFS, betting, etc.).
     

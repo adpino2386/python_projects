@@ -23,8 +23,8 @@ from app.utils.app_helpers import get_db_engine, cached_db_query
 from utils.matchup_predictor import (
     get_pitcher_archetype, get_hitter_archetypes,
     predict_game_outcome, predict_expected_statistics,
-    predict_lineup_performance, get_start_sit_recommendations,
-    get_recent_form, adjust_for_recent_form, predict_game_score
+    predict_lineup_performance, predict_game_score, get_start_sit_recommendations,
+    get_recent_form, adjust_for_recent_form
 )
 from app.utils.park_factors import (
     get_park_factor, get_weather_factor, TEAM_STADIUMS, WEATHER_FACTORS
