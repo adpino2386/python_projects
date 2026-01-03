@@ -12,6 +12,7 @@ source_dir = app_dir.parent
 sys.path.insert(0, str(source_dir))
 
 from app.utils.app_helpers import get_db_engine, cached_db_query
+from app.pages.standings import get_league_standings
 from datetime import datetime, date, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
@@ -64,25 +65,15 @@ def show():
         st.subheader("American League")
         st.info("📊 Full standings available in Standings page")
         # Placeholder table
-        al_data = {
-            'Team': ['Yankees', 'Orioles', 'Rays', 'Blue Jays', 'Red Sox'],
-            'W': [95, 93, 90, 85, 80],
-            'L': [67, 69, 72, 77, 82],
-            'GB': ['-', '2.0', '5.0', '10.0', '15.0']
-        }
-        st.dataframe(pd.DataFrame(al_data), width='stretch', hide_index=True)
+        al_df = get_league_standings(103)
+        st.dataframe(al_df, width='stretch', hide_index=True)
     
     with col2:
         st.subheader("National League")
         st.info("📊 Full standings available in Standings page")
         # Placeholder table
-        nl_data = {
-            'Team': ['Dodgers', 'Braves', 'Phillies', 'Mets', 'Marlins'],
-            'W': [100, 98, 92, 88, 82],
-            'L': [62, 64, 70, 74, 80],
-            'GB': ['-', '2.0', '8.0', '12.0', '18.0']
-        }
-        st.dataframe(pd.DataFrame(nl_data), width='stretch', hide_index=True)
+        nl_df = get_league_standings(104)
+        st.dataframe(nl_df, width='stretch', hide_index=True)
     
     st.markdown("---")
     

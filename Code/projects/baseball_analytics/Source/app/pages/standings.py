@@ -143,7 +143,7 @@ def get_division_standings_dfs():
         
         # Map raw fields to clean display names
         cols_map = {
-            'name': 'TM',
+            'name': 'TEAM',
             'w': 'W',
             'l': 'L',
             'W%': 'PCT',
@@ -157,3 +157,65 @@ def get_division_standings_dfs():
         
     return division_dict
 
+
+def get_league_standings(league_id):
+    """Fetches American/National League standings as a single DataFrame ordered by Rank."""
+    
+    TEAM_ABBR = {
+        'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
+        'Boston Red Sox': 'BOS', 'Chicago White Sox': 'CWS', 'Chicago Cubs': 'CHC',
+        'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
+        'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
+        'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
+        'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
+        'New York Yankees': 'NYY', 'Athletics': 'ATH', 'Philadelphia Phillies': 'PHI',
+        'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF',
+        'Seattle Mariners': 'SEA', 'St. Louis Cardinals': 'STL', 'Tampa Bay Rays': 'TB',
+        'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR', 'Washington Nationals': 'WSH'
+    }
+
+    # Fetch data only for the specified league
+    standings_raw = statsapi.standings_data(leagueId=league_id, season=2025)
+    
+    # Combine all teams from all divisions into one list
+    all_teams = []
+    for division_id in standings_raw:
+        all_teams.extend(standings_raw[division_id]['teams'])
+    
+    # Create the single DataFrame
+    df = pd.DataFrame(all_teams)
+    
+    # 1. Abbreviate names
+    df['name'] = df['name'].map(TEAM_ABBR).fillna(df['name'])
+    
+    # 2. Calculate PCT (Standard MLB format)
+    df['W%'] = df['w'] / (df['w'] + df['l']).replace(0, 1)
+    df['W%_sort'] = df['W%'] # Keep a numeric version for sorting
+    df['W%'] = df['W%'].apply(lambda x: '{:.3f}'.format(x).lstrip('0'))
+    
+    # 3. Map and Rename
+    cols_map = {
+        'name': 'TEAM',
+        'w': 'W',
+        'l': 'L',
+        'W%': 'PCT',
+        # 'gb': 'GB',
+        'wc_gb': 'WCGB',
+        'league_rank': 'LG RNK'
+    }
+    
+    # Convert 'league_rank' to numeric to ensure correct sorting (1 before 10)
+    df['league_rank'] = pd.to_numeric(df['league_rank'])
+    
+    # Sort by League Rank
+    df = df.sort_values(by='league_rank', ascending=True)
+    
+    # Final filter and rename
+    df = df[list(cols_map.keys())].rename(columns=cols_map)
+    
+    df = df.head(5)  # Return top 5 teams in the league
+    
+    # Drop the temporary sorting column
+    df = df.drop(columns=['LG RNK'])
+    
+    return df

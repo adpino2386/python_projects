@@ -258,7 +258,7 @@ def show_due_for_hits(engine):
     # Query luck scores
     query = """
     SELECT 
-        p.full_name,
+        CONCAT(p.first_name_chadwick, ' ', p.last_name_chadwick) AS full_name,
         l.luck_score,
         l.luck_confidence,
         l.at_bats
@@ -300,7 +300,7 @@ def show_cooling_off(engine):
     # Query luck scores (negative = lucky/overperforming)
     query = """
     SELECT 
-        p.full_name,
+        CONCAT(p.first_name_chadwick, ' ', p.last_name_chadwick) AS full_name,
         l.luck_score,
         l.luck_confidence,
         l.at_bats
