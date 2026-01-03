@@ -123,7 +123,8 @@ def get_division_standings_dfs():
     }
 
     # leagueId 103 is AL, 104 is NL
-    standings_raw = statsapi.standings_data(leagueId="103,104")
+    # standings_raw = statsapi.standings_data(leagueId="103,104") #This should be dynamic based on current season
+    standings_raw = statsapi.standings_data(leagueId="103,104", season=2025)
     division_dict = {}
 
     for division_id in standings_raw:
