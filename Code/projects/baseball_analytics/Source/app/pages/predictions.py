@@ -10,6 +10,10 @@ import plotly.graph_objects as go
 import sys
 from pathlib import Path
 from datetime import date, timedelta
+import statsapi
+import pandas as pd
+import pytz
+from datetime import datetime
 
 app_dir = Path(__file__).parent.parent
 source_dir = app_dir.parent
@@ -258,7 +262,7 @@ def show_due_for_hits(engine):
     # Query luck scores
     query = """
     SELECT 
-        p.full_name,
+        CONCAT(p.first_name_chadwick, ' ', p.last_name_chadwick) AS full_name,
         l.luck_score,
         l.luck_confidence,
         l.at_bats
@@ -300,7 +304,7 @@ def show_cooling_off(engine):
     # Query luck scores (negative = lucky/overperforming)
     query = """
     SELECT 
-        p.full_name,
+        CONCAT(p.first_name_chadwick, ' ', p.last_name_chadwick) AS full_name,
         l.luck_score,
         l.luck_confidence,
         l.at_bats
@@ -334,3 +338,71 @@ def show_cooling_off(engine):
     else:
         st.info("No luck score data available. Please run luck score calculations.")
 
+
+
+# Team abbreviations to keep the table mobile-friendly
+TEAM_ABBR = {
+    'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
+    'Boston Red Sox': 'BOS', 'Chicago White Sox': 'CWS', 'Chicago Cubs': 'CHC',
+    'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
+    'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
+    'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
+    'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
+    'New York Yankees': 'NYY', 'Athletics': 'ATH', 'Philadelphia Phillies': 'PHI',
+    'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF',
+    'Seattle Mariners': 'SEA', 'St. Louis Cardinals': 'STL', 'Tampa Bay Rays': 'TB',
+    'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR', 'Washington Nationals': 'WSH'
+}
+
+
+def format_to_local_time(utc_str, local_tz_str='US/Eastern'):
+    """Helper to convert ISO UTC string to 12-hour local time."""
+    if not utc_str:
+        return "TBD"
+    try:
+        # Parse UTC string (e.g., 2025-06-15T18:10:00Z)
+        utc_dt = datetime.fromisoformat(utc_str.replace('Z', '+00:00'))
+        local_tz = pytz.timezone(local_tz_str)
+        local_dt = utc_dt.astimezone(local_tz)
+        return local_dt.strftime('%I:%M %p')
+    except Exception:
+        return "TBD"
+
+
+def get_daily_starters(date_str, user_tz='US/Eastern'):
+    # 1. Fetch all games for the specified date
+    schedule = statsapi.schedule(date= date_str)
+    
+    if not schedule:
+        return pd.DataFrame() # Return empty if no games
+        
+    games_list = []
+    
+    for game in schedule:
+        # Convert UTC to Local Time using our helper
+        raw_time = game.get("game_datetime")
+        #print(f"DEBUG: Game between {game.get('home_name')} and {game.get('away_name')} has time: {raw_time}")
+        local_time = format_to_local_time(raw_time, user_tz)
+
+        # Extract names and apply abbreviations
+        home_full = game.get("home_name")
+        away_full = game.get("away_name")
+
+        game_data = {
+            "Time": local_time,
+            "Away": TEAM_ABBR.get(away_full, away_full),
+            "Home": TEAM_ABBR.get(home_full, home_full),
+            "Away Pitcher": game.get("away_probable_pitcher", "TBD"),
+            "Home Pitcher": game.get("home_probable_pitcher", "TBD"),
+            "Away Score": game.get("away_score", 0),
+            "Home Score": game.get("home_score", 0),
+            "Status": game.get("status"),
+            "Venue": game.get("venue_name"),
+            "game_id": game.get("game_id") # Keeping ID for background lookups
+        }
+        games_list.append(game_data)
+    
+    # 2. Convert to DataFrame
+    df = pd.DataFrame(games_list)
+    
+    return df

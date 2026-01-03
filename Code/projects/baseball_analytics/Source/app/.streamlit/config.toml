@@ -1,0 +1,8 @@
+[client]
+showSidebarNavigation = false
+
+[server]
+runOnSave = true
+
+[theme]
+#font = "sans serif"
