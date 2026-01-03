@@ -24,7 +24,10 @@ from utils.matchup_predictor import (
     get_pitcher_archetype, get_hitter_archetypes,
     predict_game_outcome, predict_expected_statistics,
     predict_lineup_performance, get_start_sit_recommendations,
-    get_recent_form, adjust_for_recent_form
+    get_recent_form, adjust_for_recent_form, predict_game_score
+)
+from app.utils.park_factors import (
+    get_park_factor, get_weather_factor, TEAM_STADIUMS, WEATHER_FACTORS
 )
 
 
@@ -33,12 +36,13 @@ def show():
     st.markdown("---")
     
     # Tabs for different prediction views
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "📅 Today's Games",
         "🔥 Best Matchups",
         "❄️ Worst Matchups",
         "🎲 Due for Hits",
-        "📉 Cooling Off"
+        "📉 Cooling Off",
+        "⚾ Game Score Prediction"
     ])
     
     engine = get_db_engine()
@@ -60,6 +64,9 @@ def show():
     
     with tab5:
         show_cooling_off(engine)
+    
+    with tab6:
+        show_game_score_prediction(engine)
 
 
 def show_todays_games(engine):
@@ -338,6 +345,219 @@ def show_cooling_off(engine):
     else:
         st.info("No luck score data available. Please run luck score calculations.")
 
+
+def show_game_score_prediction(engine):
+    """Show game score prediction (high/low scoring games)"""
+    st.subheader("⚾ Game Score Prediction (High/Low Scoring)")
+    st.info("Predict if games will be high-scoring (>8 runs) or low-scoring (≤8 runs) based on matchups, park factors, and weather")
+    
+    pitchers_df = get_pitcher_archetype(engine)
+    all_hitters = get_hitter_archetypes(engine)
+    
+    if pitchers_df.empty or len(all_hitters) < 9:
+        st.info("No data available")
+        return
+    
+    # Get sample games for prediction
+    st.markdown("### Select Game Parameters")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # Select pitcher
+        pitcher_names = pitchers_df['full_name'].tolist()
+        selected_pitcher_name = st.selectbox("Select Starting Pitcher", pitcher_names)
+        selected_pitcher = pitchers_df[pitchers_df['full_name'] == selected_pitcher_name].iloc[0].to_dict()
+    
+    with col2:
+        # Select opponent lineup (sample)
+        st.markdown("**Opponent Lineup:** (Sample)")
+        lineup = all_hitters.sample(9)
+        st.info(f"Selected {len(lineup)} hitters from database")
+    
+    st.markdown("---")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        # Park selection
+        stadium_options = list(TEAM_STADIUMS.values()) + ["Neutral Park (1.0)"]
+        selected_stadium = st.selectbox("Ballpark/Stadium", stadium_options)
+        
+        if selected_stadium == "Neutral Park (1.0)":
+            park_factors = get_park_factor()
+        else:
+            park_factors = get_park_factor(stadium_name=selected_stadium)
+        
+        park_factor = park_factors['park_factor']
+        
+        st.info(f"**Park Factor:** {park_factor:.3f}\n\n"
+                f"{'Hitter-friendly' if park_factor > 1.0 else 'Pitcher-friendly' if park_factor < 1.0 else 'Neutral'} park")
+    
+    with col2:
+        # Weather selection
+        weather_options = list(WEATHER_FACTORS.keys())
+        weather_labels = [f"{key.replace('_', ' ').title()} - {WEATHER_FACTORS[key]['description']}" 
+                         for key in weather_options]
+        selected_weather_idx = st.selectbox("Weather Conditions", range(len(weather_options)), 
+                                            format_func=lambda x: weather_labels[x])
+        selected_weather = weather_options[selected_weather_idx]
+        
+        weather_factors = get_weather_factor(selected_weather)
+        weather_multiplier = weather_factors['park_factor_multiplier']
+        
+        st.info(f"**Weather Factor:** {weather_multiplier:.3f}\n\n"
+                f"{weather_factors['description']}")
+    
+    with col3:
+        # Optional: Opponent pitcher
+        st.markdown("**Opponent Pitcher (Optional)**")
+        include_opponent = st.checkbox("Include opponent pitcher", value=False)
+        
+        opponent_pitcher = None
+        if include_opponent:
+            opp_pitcher_names = [p for p in pitcher_names if p != selected_pitcher_name]
+            if opp_pitcher_names:
+                selected_opp_pitcher_name = st.selectbox("Opponent Pitcher", opp_pitcher_names, 
+                                                         key="opponent_pitcher")
+                opponent_pitcher = pitchers_df[pitchers_df['full_name'] == selected_opp_pitcher_name].iloc[0].to_dict()
+    
+    st.markdown("---")
+    
+    # Predict game score
+    if st.button("🎯 Predict Game Score", type="primary"):
+        prediction = predict_game_score(
+            selected_pitcher, 
+            lineup,
+            park_factor=park_factor,
+            weather_factor=weather_multiplier,
+            opponent_pitcher=opponent_pitcher
+        )
+        
+        st.markdown("### Prediction Results")
+        
+        # Key metrics
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            score_color = "🟢" if prediction['is_high_scoring'] else "🔵"
+            st.metric(
+                "Score Category",
+                f"{score_color} {prediction['score_category']}",
+                f"Threshold: {prediction['threshold']} runs"
+            )
+        
+        with col2:
+            st.metric(
+                "Total Expected Runs",
+                f"{prediction['total_expected_runs']:.2f}",
+                f"Confidence: {prediction['confidence']}"
+            )
+        
+        with col3:
+            st.metric(
+                "Pitcher Expected Runs Allowed",
+                f"{prediction['pitcher_expected_runs_allowed']:.2f}",
+                "Adjusted for park & weather"
+            )
+        
+        with col4:
+            st.metric(
+                "Combined Adjustment",
+                f"{prediction['combined_adjustment']:.3f}",
+                f"Park: {prediction['park_factor']:.2f} × Weather: {prediction['weather_factor']:.2f}"
+            )
+        
+        st.markdown("---")
+        
+        # Detailed breakdown
+        st.markdown("### Detailed Analysis")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("#### Factors Breakdown")
+            factors_df = pd.DataFrame({
+                'Factor': ['Park Factor', 'Weather Factor', 'Combined Adjustment'],
+                'Value': [prediction['park_factor'], prediction['weather_factor'], prediction['combined_adjustment']],
+                'Impact': [
+                    'Hitter-friendly' if prediction['park_factor'] > 1.0 else 'Pitcher-friendly' if prediction['park_factor'] < 1.0 else 'Neutral',
+                    weather_factors['description'],
+                    'Hitter-friendly' if prediction['combined_adjustment'] > 1.0 else 'Pitcher-friendly' if prediction['combined_adjustment'] < 1.0 else 'Neutral'
+                ]
+            })
+            st.dataframe(factors_df, width='stretch', hide_index=True)
+        
+        with col2:
+            st.markdown("#### Prediction Summary")
+            
+            if prediction['is_high_scoring']:
+                st.success(f"✅ **HIGH-SCORING GAME PREDICTED**\n\n"
+                          f"Expected total runs: **{prediction['total_expected_runs']:.2f}**\n\n"
+                          f"This game is predicted to exceed 8 total runs. Factors contributing:\n"
+                          f"- {selected_stadium} is a {'hitter-friendly' if park_factor > 1.0 else 'neutral' if park_factor == 1.0 else 'pitcher-friendly'} park\n"
+                          f"- Weather: {weather_factors['description']}\n"
+                          f"- Matchup quality and park/weather adjustments favor offense")
+            else:
+                st.info(f"🔵 **LOW-SCORING GAME PREDICTED**\n\n"
+                       f"Expected total runs: **{prediction['total_expected_runs']:.2f}**\n\n"
+                       f"This game is predicted to have 8 or fewer total runs. Factors contributing:\n"
+                       f"- {selected_stadium} is a {'pitcher-friendly' if park_factor < 1.0 else 'neutral' if park_factor == 1.0 else 'hitter-friendly'} park\n"
+                       f"- Weather: {weather_factors['description']}\n"
+                       f"- Matchup quality and park/weather adjustments favor pitching/defense")
+        
+        # Visual
+        st.markdown("---")
+        st.markdown("### Visualization")
+        
+        fig = go.Figure()
+        
+        # Add threshold line
+        fig.add_hline(y=8.0, line_dash="dash", line_color="gray", 
+                     annotation_text="High/Low Threshold (8 runs)")
+        
+        # Add predicted total runs
+        color = 'red' if prediction['is_high_scoring'] else 'blue'
+        fig.add_trace(go.Bar(
+            x=['Predicted Total Runs'],
+            y=[prediction['total_expected_runs']],
+            marker_color=color,
+            text=[f"{prediction['total_expected_runs']:.2f}"],
+            textposition='auto',
+            name='Predicted Runs'
+        ))
+        
+        fig.update_layout(
+            title="Game Score Prediction",
+            yaxis_title="Total Runs",
+            height=400,
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig, width='stretch')
+        
+        # Matchup details
+        st.markdown("---")
+        st.markdown("### Matchup Details")
+        
+        matchup_info = predict_game_outcome(selected_pitcher, lineup)
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown(f"**Pitcher:** {selected_pitcher['full_name']}")
+            st.markdown(f"- Grade: {selected_pitcher.get('overall_grade', 'N/A')}")
+            st.markdown(f"- Archetype: {selected_pitcher.get('pitcher_archetype_label', 'N/A')}")
+            st.markdown(f"- Win Probability vs Opponent: {matchup_info['win_probability']}%")
+        
+        with col2:
+            st.markdown(f"**Opponent Lineup:**")
+            grade_counts = lineup['overall_grade'].value_counts().to_dict()
+            st.markdown(f"- Grade Distribution: {grade_counts}")
+            if matchup_info.get('top_threats'):
+                st.markdown(f"- Top Threat: {matchup_info['top_threats'][0]['name']}")
+            else:
+                st.markdown("- Top Threat: N/A")
 
 
 # Team abbreviations to keep the table mobile-friendly
