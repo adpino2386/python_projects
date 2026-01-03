@@ -13,7 +13,7 @@ source_dir = app_dir.parent
 sys.path.insert(0, str(source_dir))
 
 from app.utils.app_helpers import get_db_engine, cached_db_query
-from utils.matchup_predictor import get_pitcher_archetype, get_hitter_archetypes
+from app.utils.matchup_predictor import get_pitcher_archetype, get_hitter_archetypes
 
 
 def show():

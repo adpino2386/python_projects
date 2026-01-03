@@ -387,7 +387,7 @@ def analyze_matchup_summary(pitcher: Dict, lineup_df: pd.DataFrame) -> str:
 # ============================================================================
 
 def get_historical_matchup(engine: Engine, pitcher_id: int, hitter_id: int, 
-                        min_pitches: int = 10) -> Optional[Dict]:
+                          min_pitches: int = 10) -> Optional[Dict]:
     """
     Get historical matchup data between a specific pitcher and hitter.
     
@@ -729,7 +729,7 @@ def predict_bulk_matchups(engine: Engine, matchups: List[Dict]) -> pd.DataFrame:
 
 
 def enhance_matchup_with_history(engine: Engine, pitcher: Dict, hitter: Dict, 
-                                matchup_result: Dict) -> Dict:
+                                 matchup_result: Dict) -> Dict:
     """
     Enhance a matchup prediction with historical data if available.
     
@@ -772,6 +772,87 @@ def enhance_matchup_with_history(engine: Engine, pitcher: Dict, hitter: Dict,
         matchup_result['historical_data'] = None
     
     return matchup_result
+
+
+def predict_game_score(pitcher: Dict, lineup_df: pd.DataFrame, 
+                      park_factor: float = 1.0, weather_factor: float = 1.0,
+                      opponent_pitcher: Optional[Dict] = None) -> Dict:
+    """
+    Predict total runs for a game and whether it will be high-scoring or low-scoring.
+    
+    High-scoring = >8 total runs combined
+    Low-scoring = <=8 total runs combined
+    
+    Args:
+        pitcher: Starting pitcher archetype data
+        lineup_df: Opposing team's lineup (9 hitters)
+        park_factor: Park factor (1.0 = neutral, >1.0 favors hitters, <1.0 favors pitchers)
+        weather_factor: Weather multiplier (1.0 = neutral)
+        opponent_pitcher: Opposing team's pitcher (optional, for full game prediction)
+    
+    Returns:
+        Dictionary with score prediction and analysis
+    """
+    if len(lineup_df) != 9:
+        raise ValueError(f"Lineup must contain exactly 9 hitters, got {len(lineup_df)}")
+    
+    # Get expected statistics for pitcher vs lineup
+    expected_stats = predict_expected_statistics(pitcher, lineup_df)
+    
+    # Base expected runs (pitcher's team allows)
+    pitcher_expected_runs_allowed = expected_stats['expected_runs']
+    
+    # Adjust for park and weather
+    total_adjustment = park_factor * weather_factor
+    adjusted_runs_allowed = pitcher_expected_runs_allowed * total_adjustment
+    
+    # If we have opponent pitcher, predict their runs allowed too
+    if opponent_pitcher:
+        # For full game prediction, we'd need the other team's lineup
+        # For now, estimate based on pitcher quality
+        grade_map = {'A+': 5, 'A': 4, 'B': 3, 'C': 2, 'D/F': 1}
+        opp_pitcher_grade = grade_map.get(opponent_pitcher.get('overall_grade', 'C'), 3)
+        
+        # Estimate opponent's expected runs allowed (league average adjusted by grade)
+        league_avg_runs = 4.5
+        opp_quality_adjustment = (5 - opp_pitcher_grade) * 0.3  # Better pitcher = fewer runs
+        opp_expected_runs_allowed = league_avg_runs - opp_quality_adjustment
+        
+        # Apply same park/weather adjustment
+        opp_adjusted_runs = opp_expected_runs_allowed * total_adjustment
+        
+        # Total expected runs (both teams)
+        total_expected_runs = adjusted_runs_allowed + opp_adjusted_runs
+    else:
+        # Single team prediction - estimate based on league average for opponent
+        league_avg_runs = 4.5
+        total_expected_runs = adjusted_runs_allowed + (league_avg_runs * total_adjustment)
+    
+    # Determine if high-scoring or low-scoring
+    is_high_scoring = total_expected_runs > 8.0
+    score_category = "HIGH-SCORING" if is_high_scoring else "LOW-SCORING"
+    
+    # Calculate confidence (based on how far from 8.0 threshold)
+    distance_from_threshold = abs(total_expected_runs - 8.0)
+    if distance_from_threshold > 2.0:
+        confidence = "HIGH"
+    elif distance_from_threshold > 1.0:
+        confidence = "MEDIUM"
+    else:
+        confidence = "LOW"
+    
+    return {
+        'total_expected_runs': round(total_expected_runs, 2),
+        'pitcher_expected_runs_allowed': round(adjusted_runs_allowed, 2),
+        'score_category': score_category,
+        'is_high_scoring': is_high_scoring,
+        'confidence': confidence,
+        'park_factor': park_factor,
+        'weather_factor': weather_factor,
+        'combined_adjustment': round(total_adjustment, 3),
+        'threshold': 8.0,
+        'distance_from_threshold': round(distance_from_threshold, 2)
+    }
 
 
 # ============================================================================
@@ -831,11 +912,11 @@ def optimize_lineup_order(pitcher: Dict, lineup_df: pd.DataFrame) -> pd.DataFram
     optimized_lineup = lineup_analysis.sort_values('suggested_order').reset_index(drop=True)
     
     return optimized_lineup[['suggested_order', 'hitter_name', 'hitter_grade', 'combined_score', 
-                            'hitter_advantage', 'order_reason']]
+                              'hitter_advantage', 'order_reason']]
 
 
 def get_recent_form(engine: Engine, player_id: int, player_type: str = 'hitter', 
-                days: int = 30) -> Optional[Dict]:
+                   days: int = 30) -> Optional[Dict]:
     """
     Get recent performance form for a player (last N days).
     
@@ -910,7 +991,7 @@ def get_recent_form(engine: Engine, player_id: int, player_type: str = 'hitter',
 
 
 def adjust_for_recent_form(prediction: Dict, pitcher_form: Optional[Dict] = None,
-                        hitter_forms: Optional[List[Dict]] = None) -> Dict:
+                          hitter_forms: Optional[List[Dict]] = None) -> Dict:
     """
     Adjust matchup prediction based on recent form.
     
@@ -973,7 +1054,7 @@ def adjust_for_recent_form(prediction: Dict, pitcher_form: Optional[Dict] = None
 
 
 def compare_pitchers_vs_lineup(engine: Engine, pitcher_ids: List[int], 
-                            lineup_df: pd.DataFrame) -> pd.DataFrame:
+                               lineup_df: pd.DataFrame) -> pd.DataFrame:
     """
     Compare multiple pitchers against the same lineup.
     
@@ -1139,7 +1220,7 @@ def simulate_game(pitcher: Dict, lineup_df: pd.DataFrame, n_simulations: int = 1
 
 
 def get_start_sit_recommendations(pitcher: Dict, available_hitters: pd.DataFrame,
-                                lineup_size: int = 9) -> Dict:
+                                  lineup_size: int = 9) -> Dict:
     """
     Recommend which hitters to start or sit based on matchup analysis.
     
@@ -1172,7 +1253,7 @@ def get_start_sit_recommendations(pitcher: Dict, available_hitters: pd.DataFrame
         'start': start_hitters[['hitter_name', 'hitter_grade', 'combined_score', 
                                 'hitter_advantage', 'reasons']].to_dict('records'),
         'sit': sit_hitters[['hitter_name', 'hitter_grade', 'combined_score', 
-                        'hitter_advantage', 'reasons']].to_dict('records'),
+                           'hitter_advantage', 'reasons']].to_dict('records'),
         'message': f'Recommended {lineup_size} starters based on matchup analysis'
     }
 
@@ -1213,7 +1294,7 @@ def prepare_visualization_data(prediction: Dict) -> Dict:
 
 
 def calculate_matchup_value(pitcher: Dict, hitter: Dict, 
-                        context: Optional[Dict] = None) -> Dict:
+                           context: Optional[Dict] = None) -> Dict:
     """
     Calculate the "value" of a matchup (useful for DFS, betting, etc.).
     
