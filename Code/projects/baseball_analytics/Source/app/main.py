@@ -85,11 +85,11 @@ with st.sidebar:
     
     # Navigation
     pages = {
-        "🏠 Home": "home",
-        "📊 Dashboard": "dashboard",
-        "🎯 Predictions": "predictions",
-        "⚔️ Comparisons": "comparisons",
-        "📈 Standings": "standings",
+        "Home": "home",
+        "Dashboard": "dashboard",
+        "Predictions": "predictions",
+        "Comparisons": "comparisons",
+        "Standings": "standings",
     }
     
     selected = st.radio("Navigate", list(pages.keys()))

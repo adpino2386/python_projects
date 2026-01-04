@@ -15,7 +15,7 @@ app_dir = Path(__file__).parent.parent
 source_dir = app_dir.parent
 sys.path.insert(0, str(source_dir))
 
-from app.utils.app_helpers import get_db_engine, cached_db_query
+from app.utils.app_helpers import get_db_engine, cached_db_query, sidebar_settings
 from app.pages.standings import get_league_standings
 from app.pages.predictions import get_daily_starters, format_to_local_time
 from datetime import datetime, date, timedelta
@@ -27,20 +27,8 @@ def show():
     st.title("⚾ Baseball Analytics Dashboard")
     st.markdown("---")
     
-    # --- SIDEBAR SETTINGS ---
-    st.sidebar.header("Settings")
-
-    # Create a dictionary for friendly names
-    tz_options = {
-        "Eastern (ET)": "US/Eastern",
-        "Central (CT)": "US/Central",
-        "Mountain (MT)": "US/Mountain",
-        "Pacific (PT)": "US/Pacific"
-    }
-
-    # The user picks the "Friendly Name", but we use the "Value" (e.g., 'US/Eastern')
-    selected_tz_label = st.sidebar.selectbox("Select Timezone", options=list(tz_options.keys()))
-    user_tz = tz_options[selected_tz_label]
+    # Use the helper function to set up sidebar
+    user_tz = sidebar_settings()
         
     # Hero section
     col1, col2, col3 = st.columns([1, 2, 1])

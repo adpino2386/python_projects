@@ -13,7 +13,9 @@ app_dir = Path(__file__).parent.parent
 source_dir = app_dir.parent
 sys.path.insert(0, str(source_dir))
 
-from app.utils.app_helpers import cached_db_query
+from app.utils.app_helpers import cached_db_query, sidebar_settings
+from app.utils.constants import get_team_abbr
+from pages.predictions import format_to_local_time
 
 
 def show():
@@ -91,36 +93,37 @@ def show_recent_results():
     """Show recent game results"""
     st.subheader("📊 Recent Game Results")
     
-    st.info("📊 Recent results. In production, this would query from your database or MLB API")
+    #st.info("📊 Recent results. In production, this would query from your database or MLB API")
     
     # Placeholder recent results
-    recent_games = {
-        'Date': ['2024-12-25', '2024-12-25', '2024-12-25', '2024-12-24', '2024-12-24'],
-        'Away Team': ['Yankees', 'Dodgers', 'Astros', 'Braves', 'Orioles'],
-        'Away Score': [5, 3, 7, 4, 2],
-        'Home Team': ['Red Sox', 'Giants', 'Mariners', 'Phillies', 'Rays'],
-        'Home Score': [3, 1, 2, 6, 0],
-        'Result': ['Yankees W', 'Dodgers W', 'Astros W', 'Phillies W', 'Orioles W']
-    }
+    df_results_yesterday = get_game_results('2025-06-14')
+    df_results_today     = get_game_results('2025-06-15')
     
-    st.dataframe(pd.DataFrame(recent_games), width='stretch', hide_index=True)
+    if not df_results_today.empty:
+        # Apply the styling
+        # .apply() looks at the DataFrame row by row (axis=1)
+        styled_df = df_results_today.style.apply(highlight_winner, axis=1)
+        
+        st.subheader("Today's Results")
+        st.dataframe(styled_df, width='stretch', hide_index=True)
+    else:
+        st.info("No games are scheduled for today.")
+        
+    if not df_results_yesterday.empty:
+        # Apply the styling
+        # .apply() looks at the DataFrame row by row (axis=1)
+        styled_df = df_results_yesterday.style.apply(highlight_winner, axis=1)
+
+        st.subheader("Yesterday's Results")
+        st.dataframe(styled_df, width='stretch', hide_index=True)
+    else:
+        st.info("No games were played yesterday.")
 
 
 def get_division_standings_dfs():
     """Fetches MLB standings, abbreviates team names, and formats for mobile."""
     
-    TEAM_ABBR = {
-        'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
-        'Boston Red Sox': 'BOS', 'Chicago White Sox': 'CWS', 'Chicago Cubs': 'CHC',
-        'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
-        'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
-        'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
-        'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
-        'New York Yankees': 'NYY', 'Athletics': 'ATH', 'Philadelphia Phillies': 'PHI',
-        'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF',
-        'Seattle Mariners': 'SEA', 'St. Louis Cardinals': 'STL', 'Tampa Bay Rays': 'TB',
-        'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR', 'Washington Nationals': 'WSH'
-    }
+    TEAM_ABBR = get_team_abbr()
 
     # leagueId 103 is AL, 104 is NL
     # standings_raw = statsapi.standings_data(leagueId="103,104") #This should be dynamic based on current season
@@ -161,18 +164,7 @@ def get_division_standings_dfs():
 def get_league_standings(league_id):
     """Fetches American/National League standings as a single DataFrame ordered by Rank."""
     
-    TEAM_ABBR = {
-        'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
-        'Boston Red Sox': 'BOS', 'Chicago White Sox': 'CWS', 'Chicago Cubs': 'CHC',
-        'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
-        'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
-        'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
-        'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
-        'New York Yankees': 'NYY', 'Athletics': 'ATH', 'Philadelphia Phillies': 'PHI',
-        'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF',
-        'Seattle Mariners': 'SEA', 'St. Louis Cardinals': 'STL', 'Tampa Bay Rays': 'TB',
-        'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR', 'Washington Nationals': 'WSH'
-    }
+    TEAM_ABBR = get_team_abbr()
 
     # Fetch data only for the specified league
     standings_raw = statsapi.standings_data(leagueId=league_id, season=2025)
@@ -219,3 +211,83 @@ def get_league_standings(league_id):
     df = df.drop(columns=['LG RNK'])
     
     return df
+
+def get_game_results(date_str, user_tz='US/Eastern'):
+    """Get the latest results
+
+    Args:
+        date_str (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+
+    # Get team abbreviations
+    TEAM_ABBR = get_team_abbr()
+    
+    # Fetch games for the specific date
+    schedule = statsapi.schedule(date= date_str)
+    
+    if not schedule:
+        return pd.DataFrame()
+
+    results_list = []
+    for game in schedule:
+        # We only want games that are finished or in progress
+        status = game.get("status", "")
+        raw_time = game.get("game_datetime")
+        
+        # 1. Determine what to show in the "Status/Time" column
+        if status == "In Progress":
+            display_status = "LIVE"
+        elif status == "Warmup":
+            display_status = "Warmup"
+        elif status == "Scheduled":
+            display_status = format_to_local_time(raw_time, user_tz)
+        elif "Final" in status:
+            display_status = "Final"
+        else:
+            display_status = status # Fallback (Delayed, Postponed, etc.)
+        
+        # Extract Scores
+        home_score = int(game.get("home_score", 0))
+        away_score = int(game.get("away_score", 0))
+
+        # Extract names and apply abbreviations
+        home_full = game.get("home_name")
+        away_full = game.get("away_name")
+        
+        # Extract Winning/Losing Pitchers (only available if game is Final)
+        winning_pitcher = game.get("winning_pitcher", "N/A")
+        losing_pitcher  = game.get("losing_pitcher", "N/A")
+
+        results_list.append({
+            # "Status": status,
+            "Status": display_status,
+            "Away": TEAM_ABBR.get(away_full, away_full),
+            "R": away_score,
+            "Home": TEAM_ABBR.get(home_full, home_full),
+            "R ": home_score, # Space added to differentiate column name
+            "Winner": winning_pitcher,
+            "Loser": losing_pitcher,
+            "Park": game.get("venue_name")
+        })
+    
+    return pd.DataFrame(results_list)
+
+def highlight_winner(row):
+    # Default style (no background)
+    style_away = ''
+    style_home = ''
+    
+    # winning_style = 'background-color: #FFFFFF; color: #000000; font-weight: bold; border-radius: 4px;'
+    winning_style = 'border-left: 5px solid #FFFFFF; font-weight: bold; color: #FFFFFF; padding-left: 5px;'
+    
+    # Highlight logic - only if the game is Final
+    if "Final" in row['Status']:
+        if row['R'] > row['R ']:
+            style_away = winning_style
+        elif row['R '] > row['R']:
+            style_home = winning_style
+            
+    return [None, style_away, None, style_home, None, None, None, None] # None for columns we don't style

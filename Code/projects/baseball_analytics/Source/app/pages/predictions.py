@@ -29,6 +29,7 @@ from app.utils.matchup_predictor import (
 from app.utils.park_factors import (
     get_park_factor, get_weather_factor, TEAM_STADIUMS, WEATHER_FACTORS
 )
+from app.utils.constants import get_team_abbr
 
 
 def show():
@@ -561,18 +562,7 @@ def show_game_score_prediction(engine):
 
 
 # Team abbreviations to keep the table mobile-friendly
-TEAM_ABBR = {
-    'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
-    'Boston Red Sox': 'BOS', 'Chicago White Sox': 'CWS', 'Chicago Cubs': 'CHC',
-    'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
-    'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
-    'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
-    'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
-    'New York Yankees': 'NYY', 'Athletics': 'ATH', 'Philadelphia Phillies': 'PHI',
-    'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF',
-    'Seattle Mariners': 'SEA', 'St. Louis Cardinals': 'STL', 'Tampa Bay Rays': 'TB',
-    'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR', 'Washington Nationals': 'WSH'
-}
+TEAM_ABBR = get_team_abbr()
 
 
 def format_to_local_time(utc_str, local_tz_str='US/Eastern'):

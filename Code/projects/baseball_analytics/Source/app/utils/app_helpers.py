@@ -139,3 +139,20 @@ def format_decimal(value: float, decimals: int = 2) -> str:
     """Format a float with specified decimals"""
     return f"{value:.{decimals}f}"
 
+
+def sidebar_settings():
+    # --- SIDEBAR SETTINGS ---
+    st.sidebar.header("Settings")
+
+    # Create a dictionary for friendly names
+    tz_options = {
+        "Eastern (ET)": "US/Eastern",
+        "Central (CT)": "US/Central",
+        "Mountain (MT)": "US/Mountain",
+        "Pacific (PT)": "US/Pacific"
+    }
+
+    # The user picks the "Friendly Name", but we use the "Value" (e.g., 'US/Eastern')
+    selected_tz_label = st.sidebar.selectbox("Select Timezone", options=list(tz_options.keys()))
+
+    return tz_options[selected_tz_label]
