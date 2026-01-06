@@ -17,10 +17,13 @@ sys.path.insert(0, str(source_dir))
 
 from app.utils.app_helpers import get_db_engine, cached_db_query, sidebar_settings
 from app.pages.standings import get_league_standings
-from app.pages.predictions import get_daily_starters, format_to_local_time
+from app.pages.predictions import get_daily_starters, format_to_local_time, display_starter_card
+from app.utils.constants import get_team_abbr
 from datetime import datetime, date, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh
+import datetime
 
 
 def show():
@@ -28,7 +31,7 @@ def show():
     st.markdown("---")
     
     # Use the helper function to set up sidebar
-    user_tz = sidebar_settings()
+    # user_tz = sidebar_settings()
         
     # Hero section
     col1, col2, col3 = st.columns([1, 2, 1])
@@ -46,21 +49,44 @@ def show():
     st.markdown("### 📅 Today's Games")
     
     engine = get_db_engine()
+    
+    # Team abbreviations to keep the table mobile-friendly
+    TEAM_ABBR = get_team_abbr()
+    
     if engine:
         # Get today's date string
-        today_str = datetime.now().strftime('%m/%d/%Y')
-        
+        #today_str = datetime.now().strftime('%m/%d/%Y')
         # Try to get games (you'll need to implement this based on your data source)
         #st.info("⚡ Games for today will be displayed here. Premium members get detailed matchup analysis!")   
-        df_todays_games = get_daily_starters('6/15/2025', user_tz) # Example date    
-        #print(df_starters.head(2))
-        if not df_todays_games.empty:
-            st.dataframe(df_todays_games, width='stretch', hide_index=True)
+        #df_todays_games = get_daily_starters('6/15/2025', user_tz) # Example date         
+        #df_games = get_daily_starters(date_str, user_tz='US/Eastern')
+
+        # 1. Setup Auto-Refresh (updates every 60 seconds)
+        st_autorefresh(interval=60 * 1000, key="datarefresh")
+
+        # 2. Automatically get today's date logic
+        today_obj = datetime.date.today()
+        display_date = today_obj.strftime("%a, %b %d").upper()
+        date_str = today_obj.strftime('%Y-%m-%d')
+
+        st.markdown(f"### {display_date}")
+
+        # 3. Fetch your DataFrame
+        #df_games = get_daily_starters(date_str)
+        df_games = get_daily_starters('6/15/2025') # Example date
+        
+        if not df_games.empty:
+            cols = st.columns(4)
+            for i in range(len(df_games)):
+                with cols[i % 4]:
+                    display_starter_card(df_games.iloc[i], TEAM_ABBR)
+        else:
+            st.info("No games scheduled for today.")
         
         # Show teaser
         col1, col2, col3 = st.columns(3)
         with col1:
-            st.metric("Games Today", len(df_todays_games), "Check Premium for Details")
+            st.metric("Games Today", len(df_games), "Check Premium for Details")
         with col2:
             st.metric("Top Matchups", "🔒 Premium", "Unlock Predictions")
         with col3:

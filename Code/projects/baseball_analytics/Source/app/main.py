@@ -89,7 +89,7 @@ with st.sidebar:
         "Dashboard": "dashboard",
         "Predictions": "predictions",
         "Comparisons": "comparisons",
-        "Standings": "standings",
+        "Results and Standings": "standings",
     }
     
     selected = st.radio("Navigate", list(pages.keys()))
