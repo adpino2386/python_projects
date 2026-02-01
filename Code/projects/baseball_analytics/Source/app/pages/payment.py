@@ -81,7 +81,7 @@ def show_premium_gate():
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("""
-        <div style='text-align: center; padding: 2rem; background-color: #fff3cd; border-radius: 0.5rem;'>
+        <div style='text-align: center; padding: 2rem; background-color: #1B1B1E; border-radius: 0.5rem;'>
             <h3>Unlock Premium Features</h3>
             <p>Get access to advanced predictions, analytics, and insights</p>
         </div>
