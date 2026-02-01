@@ -38,11 +38,11 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-def show():
+def show():  
     st.title("Recent Results & League Standings")
     st.markdown("---")
     
-    tab1, tab2, tab3 = st.tabs(["Recent Results", "American League", "National League"])
+    tab1, tab2, tab3 = st.tabs(["Recent Results", "AL Standings", "NL Standings"])
     
     with tab1:
         show_recent_results()        
@@ -74,14 +74,14 @@ def show_al_standings():
         st.markdown("#### AL Central")
         st.dataframe(all_standings['American League Central'], width='stretch', hide_index=True)
     
-    with col3:
+    with col3: 
         st.markdown("#### AL West")
         st.dataframe(all_standings['American League West'], width='stretch', hide_index=True)
 
 
 def show_nl_standings():
     """Show National League standings"""
-    st.subheader("National League Standings")
+    st.subheader("National League Standings")  
     
     #st.info("Standings data. In production, this would query from your database or MLB API")
     
@@ -107,7 +107,7 @@ def show_recent_results():
     """Show recent game results"""
     #st.subheader("Recent Game Results")
     
-    TEAM_ABBR = get_team_abbr()
+    TEAM_ABBR = get_team_abbr() 
     
     #st.info("Recent results. In production, this would query from your database or MLB API")
         
