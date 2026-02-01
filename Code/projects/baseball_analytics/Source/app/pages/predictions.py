@@ -29,6 +29,7 @@ from app.utils.matchup_predictor import (
 from app.utils.park_factors import (
     get_park_factor, get_weather_factor, TEAM_STADIUMS, WEATHER_FACTORS
 )
+from app.utils.constants import get_team_abbr
 
 
 def show():
@@ -561,18 +562,7 @@ def show_game_score_prediction(engine):
 
 
 # Team abbreviations to keep the table mobile-friendly
-TEAM_ABBR = {
-    'Arizona Diamondbacks': 'ARI', 'Atlanta Braves': 'ATL', 'Baltimore Orioles': 'BAL',
-    'Boston Red Sox': 'BOS', 'Chicago White Sox': 'CWS', 'Chicago Cubs': 'CHC',
-    'Cincinnati Reds': 'CIN', 'Cleveland Guardians': 'CLE', 'Colorado Rockies': 'COL',
-    'Detroit Tigers': 'DET', 'Houston Astros': 'HOU', 'Kansas City Royals': 'KC',
-    'Los Angeles Angels': 'LAA', 'Los Angeles Dodgers': 'LAD', 'Miami Marlins': 'MIA',
-    'Milwaukee Brewers': 'MIL', 'Minnesota Twins': 'MIN', 'New York Mets': 'NYM',
-    'New York Yankees': 'NYY', 'Athletics': 'ATH', 'Philadelphia Phillies': 'PHI',
-    'Pittsburgh Pirates': 'PIT', 'San Diego Padres': 'SD', 'San Francisco Giants': 'SF',
-    'Seattle Mariners': 'SEA', 'St. Louis Cardinals': 'STL', 'Tampa Bay Rays': 'TB',
-    'Texas Rangers': 'TEX', 'Toronto Blue Jays': 'TOR', 'Washington Nationals': 'WSH'
-}
+TEAM_ABBR = get_team_abbr()
 
 
 def format_to_local_time(utc_str, local_tz_str='US/Eastern'):
@@ -626,3 +616,75 @@ def get_daily_starters(date_str, user_tz='US/Eastern'):
     df = pd.DataFrame(games_list)
     
     return df
+
+
+def get_odds_color(odds_str):
+    """Returns green for favorites (-), red for underdogs (+), and gray for others."""
+    if odds_str.startswith('-'):
+        return "#28a745"  # Green for Favorite
+    elif odds_str.startswith('+'):
+        return "#dc3545"  # Red for Underdog
+    return "gray"
+
+
+def display_starter_card(game_row, TEAM_ABBR):
+    game_id = game_row['game_id']
+    status = str(game_row['Status']).upper()
+    
+    # Mock Odds (Replace with your actual data merge)
+    ml_away, ml_home = "+120", "-140"
+    spread_away, spread_home = "+1.5 (-110)", "-1.5 (-110)"
+    total_line = "9.5 (O-115)"
+
+    with st.container(border=True):
+        # 1. Top Header Row: ID and Label
+        id_col, label_col = st.columns([3, 2])
+        id_col.markdown(f"<span style='color:gray; font-size:0.75em;'>ID: {game_id}</span>", unsafe_allow_html=True)
+        label_col.markdown("<div style='text-align:right; color:gray; font-size:0.7em;'>ML | SPREAD</div>", unsafe_allow_html=True)
+        
+        # --- AWAY TEAM ROW ---
+        c1, c2 = st.columns([3, 2])
+        with c1:
+            st.markdown(f"**{game_row['Away']}**")
+            st.caption(f"P: {game_row['Away Pitcher']}")
+        with c2:
+            # Applying the color helper to the Moneyline (ml_away)
+            color_a = get_odds_color(ml_away)
+            st.markdown(
+                f"<div style='text-align:right;'>"
+                f"<b style='color:{color_a};'>{ml_away}</b> | <small>{spread_away}</small>"
+                f"</div>", 
+                unsafe_allow_html=True
+            )
+
+        st.write("") # Tiny vertical spacer
+
+        # --- HOME TEAM ROW ---
+        c1_h, c2_h = st.columns([3, 2])
+        with c1_h:
+            st.markdown(f"**{game_row['Home']}**")
+            st.caption(f"P: {game_row['Home Pitcher']}")
+        with c2_h:
+            # Applying the color helper to the Moneyline (ml_home)
+            color_h = get_odds_color(ml_home)
+            st.markdown(
+                f"<div style='text-align:right;'>"
+                f"<b style='color:{color_h};'>{ml_home}</b> | <small>{spread_home}</small>"
+                f"</div>", 
+                unsafe_allow_html=True
+            )
+        
+        st.divider()
+        
+        # 2. Footer Row: Status and Totals
+        foot_left, foot_right = st.columns([1, 1])
+        with foot_left:
+            is_live = "PROGRESS" in status or "LIVE" in status
+            dot = '<span class="red-dot"></span>' if is_live else ""
+            st.markdown(f"{dot} **{game_row['Time']}**", unsafe_allow_html=True)
+        with foot_right:
+            st.markdown(f"<div style='text-align:right;'><b>O/U: {total_line}</b></div>", unsafe_allow_html=True)
+
+        with st.expander("Game ID & Gameday Link"):
+            st.code(game_id)
+            st.markdown(f"🔗 [Open MLB Gameday](https://www.mlb.com/gameday/{game_id})")
