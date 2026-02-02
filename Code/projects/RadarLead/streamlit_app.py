@@ -421,11 +421,9 @@ elif page == "🗺️ Search by Map":
     if 'map_center' not in st.session_state:
         st.session_state.map_center = [45.5017, -73.5673]  # Montreal
     
-    if 'map_clicked' not in st.session_state:
-        st.session_state.map_clicked = None
-    
     # Create interactive map with Folium
     st.subheader("📍 Click on the map to select a location")
+    st.info("💡 **Click anywhere on the map to select that location, or enter coordinates manually below.**")
     
     # Create Folium map
     m = folium.Map(
@@ -434,32 +432,54 @@ elif page == "🗺️ Search by Map":
         tiles='OpenStreetMap'
     )
     
-    # Add click handler
-    folium.Marker(
+    # Add marker for selected location
+    marker = folium.Marker(
         st.session_state.map_center,
-        popup="Selected Location",
-        tooltip="Click map to change location"
-    ).add_to(m)
+        popup=f"Selected Location<br>Lat: {st.session_state.map_center[0]:.6f}<br>Lng: {st.session_state.map_center[1]:.6f}",
+        tooltip="Selected Location - Click map to change",
+        icon=folium.Icon(color='red', icon='info-sign')
+    )
+    marker.add_to(m)
     
     # Display map and get clicked location
-    map_data = st_folium(m, width='100%', height=500, returned_objects=["last_clicked"])
+    # st_folium automatically captures clicks - use a stable key
+    map_data = st_folium(
+        m, 
+        width='100%', 
+        height=500, 
+        returned_objects=["last_clicked"],
+        key="interactive_map"
+    )
     
-    # Get clicked coordinates
-    if map_data.get("last_clicked"):
+    # Debug: Show if click was detected (can remove later)
+    if map_data and map_data.get("last_clicked"):
         clicked_lat = map_data["last_clicked"]["lat"]
         clicked_lng = map_data["last_clicked"]["lng"]
-        st.session_state.map_center = [clicked_lat, clicked_lng]
-        st.session_state.map_clicked = [clicked_lat, clicked_lng]
+        
+        # Check if this is a new click (different from current center)
+        current_lat = st.session_state.map_center[0]
+        current_lng = st.session_state.map_center[1]
+        
+        # Update if clicked location is significantly different
+        threshold = 0.0001  # About 10 meters
+        lat_diff = abs(clicked_lat - current_lat)
+        lng_diff = abs(clicked_lng - current_lng)
+        
+        if lat_diff > threshold or lng_diff > threshold:
+            st.session_state.map_center = [clicked_lat, clicked_lng]
+            st.success(f"📍 Location updated! Lat: {clicked_lat:.6f}, Lng: {clicked_lng:.6f}")
+            st.rerun()
     
-    # Show current selected coordinates
-    col1, col2 = st.columns(2)
+    # Show current selected coordinates with update buttons
+    st.subheader("📍 Selected Location Coordinates")
+    col1, col2, col3 = st.columns([2, 2, 1])
     with col1:
         map_lat = st.number_input(
             "Latitude",
             value=st.session_state.map_center[0],
             format="%.10f",
             step=0.0001,
-            key="map_lat"
+            key="map_lat_input"
         )
     with col2:
         map_lng = st.number_input(
@@ -467,13 +487,19 @@ elif page == "🗺️ Search by Map":
             value=st.session_state.map_center[1],
             format="%.10f",
             step=0.0001,
-            key="map_lng"
+            key="map_lng_input"
         )
+    with col3:
+        st.write("")  # Spacing
+        st.write("")  # Spacing
+        update_coords = st.button("📍 Update Map", type="secondary")
     
-    # Update map center when coordinates change manually
-    if map_lat != st.session_state.map_center[0] or map_lng != st.session_state.map_center[1]:
-        st.session_state.map_center = [map_lat, map_lng]
-        st.rerun()
+    # Update map center when coordinates change manually or button clicked
+    if update_coords or (abs(map_lat - st.session_state.map_center[0]) > 0.0001 or 
+                         abs(map_lng - st.session_state.map_center[1]) > 0.0001):
+        if update_coords or (map_lat != st.session_state.map_center[0] or map_lng != st.session_state.map_center[1]):
+            st.session_state.map_center = [map_lat, map_lng]
+            st.rerun()
     
     # Search button
     if st.button("🔍 Search Businesses at This Location", type="primary", use_container_width=True):
