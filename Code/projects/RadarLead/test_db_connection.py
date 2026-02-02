@@ -47,9 +47,10 @@ def test_connection():
         engine = create_connection_postgresql()
         print("\n✅ SUCCESS! Database connection is working!")
         
-        # Test a simple query
+        # Test a simple query (SQLAlchemy 2.0 requires text() wrapper)
+        from sqlalchemy import text
         with engine.connect() as conn:
-            result = conn.execute("SELECT version();")
+            result = conn.execute(text("SELECT version();"))
             version = result.fetchone()[0]
             print(f"\n📊 PostgreSQL Version: {version.split(',')[0]}")
         
