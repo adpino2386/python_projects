@@ -417,25 +417,30 @@ elif page == "🗺️ Search by Map":
         radius_meters = radius_km * 1000
         st.metric("Radius", f"{radius_meters:,} m")
     
-    # Initialize map center (default to Montreal)
+    # Initialize map center (default to Montreal) - only set if not already set
+    # IMPORTANT: Never reset this once it's been set by user interaction
     if 'map_center' not in st.session_state:
         st.session_state.map_center = [45.5017, -73.5673]  # Montreal
+    
+    # Store the current map center to use for search (persist through operations)
+    # Always use session state directly - never reset it
+    current_map_center = st.session_state.map_center.copy()
     
     # Create interactive map with Folium
     st.subheader("📍 Click on the map to select a location")
     st.info("💡 **Click anywhere on the map to select that location, or enter coordinates manually below.**")
     
-    # Create Folium map
+    # Create Folium map using current center
     m = folium.Map(
-        location=st.session_state.map_center,
+        location=current_map_center,
         zoom_start=10,
         tiles='OpenStreetMap'
     )
     
     # Add marker for selected location
     marker = folium.Marker(
-        st.session_state.map_center,
-        popup=f"Selected Location<br>Lat: {st.session_state.map_center[0]:.6f}<br>Lng: {st.session_state.map_center[1]:.6f}",
+        current_map_center,
+        popup=f"Selected Location<br>Lat: {current_map_center[0]:.6f}<br>Lng: {current_map_center[1]:.6f}",
         tooltip="Selected Location - Click map to change",
         icon=folium.Icon(color='red', icon='info-sign')
     )
@@ -451,14 +456,14 @@ elif page == "🗺️ Search by Map":
         key="interactive_map"
     )
     
-    # Debug: Show if click was detected (can remove later)
+    # Get clicked coordinates from map
     if map_data and map_data.get("last_clicked"):
         clicked_lat = map_data["last_clicked"]["lat"]
         clicked_lng = map_data["last_clicked"]["lng"]
         
         # Check if this is a new click (different from current center)
-        current_lat = st.session_state.map_center[0]
-        current_lng = st.session_state.map_center[1]
+        current_lat = current_map_center[0]
+        current_lng = current_map_center[1]
         
         # Update if clicked location is significantly different
         threshold = 0.0001  # About 10 meters
@@ -476,7 +481,7 @@ elif page == "🗺️ Search by Map":
     with col1:
         map_lat = st.number_input(
             "Latitude",
-            value=st.session_state.map_center[0],
+            value=current_map_center[0],
             format="%.10f",
             step=0.0001,
             key="map_lat_input"
@@ -484,7 +489,7 @@ elif page == "🗺️ Search by Map":
     with col2:
         map_lng = st.number_input(
             "Longitude",
-            value=st.session_state.map_center[1],
+            value=current_map_center[1],
             format="%.10f",
             step=0.0001,
             key="map_lng_input"
@@ -495,22 +500,33 @@ elif page == "🗺️ Search by Map":
         update_coords = st.button("📍 Update Map", type="secondary")
     
     # Update map center when coordinates change manually or button clicked
-    if update_coords or (abs(map_lat - st.session_state.map_center[0]) > 0.0001 or 
-                         abs(map_lng - st.session_state.map_center[1]) > 0.0001):
-        if update_coords or (map_lat != st.session_state.map_center[0] or map_lng != st.session_state.map_center[1]):
-            st.session_state.map_center = [map_lat, map_lng]
-            st.rerun()
+    if update_coords:
+        st.session_state.map_center = [map_lat, map_lng]
+        st.rerun()
+    
+    # Use the session state map_center for search (not the input fields which might be stale)
+    # This ensures we always use the most recent clicked/updated location
+    # IMPORTANT: Get these values right before the search to ensure we have the latest
+    search_lat = st.session_state.map_center[0]
+    search_lng = st.session_state.map_center[1]
+    
+    # Display current search location
+    st.info(f"📍 **Search will use:** Lat: {search_lat:.6f}, Lng: {search_lng:.6f}")
     
     # Search button
     if st.button("🔍 Search Businesses at This Location", type="primary", use_container_width=True):
         if not business_type_map:
             st.error("❌ Business type is required!")
         else:
-            with st.spinner(f"🔍 Searching for {business_type_map} within {radius_km}km..."):
+            # Get the coordinates again right before search to ensure we have the latest
+            final_search_lat = st.session_state.map_center[0]
+            final_search_lng = st.session_state.map_center[1]
+            
+            with st.spinner(f"🔍 Searching for {business_type_map} within {radius_km}km at ({final_search_lat:.6f}, {final_search_lng:.6f})..."):
                 try:
                     businesses = st.session_state.places_service.search_nearby(
-                        lat=float(map_lat),
-                        lng=float(map_lng),
+                        lat=float(final_search_lat),
+                        lng=float(final_search_lng),
                         keyword=business_type_map,
                         radius=int(radius_meters),
                         max_results=60
@@ -521,17 +537,22 @@ elif page == "🗺️ Search by Map":
                         st.session_state.businesses = businesses
                         st.session_state.businesses_without_website = st.session_state.places_service.filter_businesses_without_website(businesses)
                         st.session_state.filter_option = "All Businesses"
+                        # IMPORTANT: Preserve the map center after search
+                        # Don't let anything reset it
+                        if 'map_center' not in st.session_state:
+                            st.session_state.map_center = [final_search_lat, final_search_lng]
                         
-                        # Show results on map
+                        # Show results on map (use the search location from session state)
                         st.subheader("📍 Results on Map")
+                        # Use the final search coordinates
                         results_map = folium.Map(
-                            location=[map_lat, map_lng],
+                            location=[final_search_lat, final_search_lng],
                             zoom_start=12
                         )
                         
                         # Add center marker
                         folium.Marker(
-                            [map_lat, map_lng],
+                            [final_search_lat, final_search_lng],
                             popup="Search Center",
                             icon=folium.Icon(color='red', icon='info-sign')
                         ).add_to(results_map)
