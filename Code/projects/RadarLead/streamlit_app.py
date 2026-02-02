@@ -73,9 +73,19 @@ if st.session_state.db_engine:
                     latitude FLOAT,
                     longitude FLOAT,
                     business_status VARCHAR(50),
+                    price_level INTEGER,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             """))
+            
+            # Add price_level column if it doesn't exist (for existing databases)
+            try:
+                conn.execute(text("""
+                    ALTER TABLE businesses 
+                    ADD COLUMN IF NOT EXISTS price_level INTEGER
+                """))
+            except:
+                pass  # Column might already exist
             conn.commit()
     except Exception as e:
         st.warning(f"⚠️ Database initialization error: {e}")
@@ -139,7 +149,7 @@ with st.form("search_form"):
         )
         location = None
     
-    submitted = st.form_submit_button("🔍 Search Businesses", use_container_width=True)
+    submitted = st.form_submit_button("🔍 Search Businesses", use_container_width=True, type="primary")
 
 # Process search
 if submitted:
@@ -200,9 +210,12 @@ if submitted:
                             for biz in businesses:
                                 conn.execute(text("""
                                     INSERT INTO businesses 
-                                    (search_query_id, place_id, name, address, phone, website, has_website, rating, total_ratings, latitude, longitude, business_status)
-                                    VALUES (:search_query_id, :place_id, :name, :address, :phone, :website, :has_website, :rating, :total_ratings, :latitude, :longitude, :business_status)
-                                    ON CONFLICT (place_id) DO NOTHING
+                                    (search_query_id, place_id, name, address, phone, website, has_website, rating, total_ratings, latitude, longitude, business_status, price_level)
+                                    VALUES (:search_query_id, :place_id, :name, :address, :phone, :website, :has_website, :rating, :total_ratings, :latitude, :longitude, :business_status, :price_level)
+                                    ON CONFLICT (place_id) DO UPDATE SET
+                                        rating = EXCLUDED.rating,
+                                        total_ratings = EXCLUDED.total_ratings,
+                                        price_level = EXCLUDED.price_level
                                 """), {
                                     'search_query_id': search_query_id,
                                     'place_id': biz.get('place_id', ''),
@@ -215,61 +228,133 @@ if submitted:
                                     'total_ratings': biz.get('total_ratings', 0),
                                     'latitude': biz.get('latitude'),
                                     'longitude': biz.get('longitude'),
-                                    'business_status': biz.get('business_status', '')
+                                    'business_status': biz.get('business_status', ''),
+                                    'price_level': biz.get('price_level')
                                 })
                             conn.commit()
                     except Exception as e:
                         st.warning(f"⚠️ Could not save to database: {e}")
                 
+                # Store results in session state
+                st.session_state.businesses = businesses
+                st.session_state.businesses_without_website = businesses_without_website
+                
                 # Display results
                 st.success(f"✅ Found {len(businesses)} businesses, {len(businesses_without_website)} without websites!")
                 
-                if businesses_without_website:
-                    # Create DataFrame for display
-                    df = pd.DataFrame(businesses_without_website)
-                    
+                if businesses:
                     # Display summary
-                    col1, col2, col3 = st.columns(3)
+                    col1, col2, col3, col4 = st.columns(4)
                     with col1:
                         st.metric("Total Businesses", len(businesses))
                     with col2:
                         st.metric("Without Websites", len(businesses_without_website))
                     with col3:
                         st.metric("With Websites", len(businesses) - len(businesses_without_website))
+                    with col4:
+                        avg_rating = pd.DataFrame(businesses)['rating'].mean()
+                        st.metric("Avg Rating", f"{avg_rating:.1f}" if not pd.isna(avg_rating) else "N/A")
                     
-                    # Display table
-                    st.subheader("📋 Businesses Without Websites")
+                    # Filter option
+                    st.subheader("📋 Business Results")
+                    filter_option = st.radio(
+                        "Show:",
+                        ["All Businesses", "Without Websites Only", "With Websites Only"],
+                        horizontal=True,
+                        key="filter_option"
+                    )
                     
-                    # Prepare display columns
-                    display_df = df[['name', 'address', 'phone', 'rating', 'total_ratings']].copy()
-                    display_df.columns = ['Name', 'Address', 'Phone', 'Rating', 'Reviews']
-                    display_df = display_df.fillna('N/A')
+                    # Filter businesses based on selection
+                    if filter_option == "All Businesses":
+                        display_businesses = businesses
+                        filter_label = "All Businesses"
+                    elif filter_option == "Without Websites Only":
+                        display_businesses = businesses_without_website
+                        filter_label = "Businesses Without Websites"
+                    else:
+                        display_businesses = [b for b in businesses if b.get('has_website', False)]
+                        filter_label = "Businesses With Websites"
                     
-                    st.dataframe(display_df, use_container_width=True, hide_index=True)
+                    if display_businesses:
+                        # Create DataFrame for display
+                        df = pd.DataFrame(display_businesses)
+                        
+                        # Prepare display columns with all requested fields
+                        display_columns = {
+                            'name': 'Name',
+                            'address': 'Address',
+                            'phone': 'Phone',
+                            'website': 'Website',
+                            'has_website': 'Has Website',
+                            'rating': 'Rating',
+                            'total_ratings': 'Reviews',
+                            'latitude': 'Latitude',
+                            'longitude': 'Longitude',
+                            'price_level': 'Price Level'
+                        }
+                        
+                        # Select available columns
+                        available_cols = [col for col in display_columns.keys() if col in df.columns]
+                        display_df = df[available_cols].copy()
+                        display_df.columns = [display_columns[col] for col in available_cols]
+                        
+                        # Handle NaN values properly for display
+                        # Convert numeric columns, keeping NaN as None for proper display
+                        if 'Rating' in display_df.columns:
+                            display_df['Rating'] = pd.to_numeric(display_df['Rating'], errors='coerce')
+                        if 'Reviews' in display_df.columns:
+                            display_df['Reviews'] = pd.to_numeric(display_df['Reviews'], errors='coerce').fillna(0).astype(int)
+                        if 'Latitude' in display_df.columns:
+                            display_df['Latitude'] = pd.to_numeric(display_df['Latitude'], errors='coerce')
+                        if 'Longitude' in display_df.columns:
+                            display_df['Longitude'] = pd.to_numeric(display_df['Longitude'], errors='coerce')
+                        
+                        # Format price level (0-4 scale, where 0=Free, 4=Very Expensive)
+                        if 'Price Level' in display_df.columns:
+                            price_map = {0: 'Free', 1: 'Inexpensive', 2: 'Moderate', 3: 'Expensive', 4: 'Very Expensive'}
+                            display_df['Price Level'] = display_df['Price Level'].map(price_map).fillna('Not Available')
+                        
+                        # Format Has Website column
+                        if 'Has Website' in display_df.columns:
+                            display_df['Has Website'] = display_df['Has Website'].map({True: 'Yes', False: 'No'})
+                        
+                        # Fill remaining NaN with empty string for string columns
+                        for col in display_df.columns:
+                            if display_df[col].dtype == 'object':
+                                display_df[col] = display_df[col].fillna('')
+                        
+                        st.dataframe(display_df, width='stretch', hide_index=True)
                     
                     # Export options
                     st.subheader("📥 Export Results")
                     col1, col2 = st.columns(2)
                     
+                    # Export options
+                    st.subheader("📥 Export Results")
+                    col1, col2 = st.columns(2)
+                    
+                    # Prepare export data (use filtered businesses)
+                    export_df = pd.DataFrame(display_businesses)
+                    
                     with col1:
-                        csv = df.to_csv(index=False)
+                        csv = export_df.to_csv(index=False)
                         st.download_button(
                             label="📄 Download CSV",
                             data=csv,
-                            file_name=f"businesses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            file_name=f"businesses_{filter_option.lower().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
                             mime="text/csv"
                         )
                     
                     with col2:
-                        json_str = json.dumps(businesses_without_website, indent=2)
+                        json_str = json.dumps(display_businesses, indent=2, default=str)
                         st.download_button(
                             label="📄 Download JSON",
                             data=json_str,
-                            file_name=f"businesses_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
+                            file_name=f"businesses_{filter_option.lower().replace(' ', '_')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json",
                             mime="application/json"
                         )
                 else:
-                    st.info("ℹ️ No businesses without websites found in this area.")
+                    st.info(f"ℹ️ No {filter_label.lower()} found in this area.")
                     
             except Exception as e:
                 st.error(f"❌ Error searching businesses: {e}")
@@ -293,7 +378,7 @@ if st.session_state.db_engine:
                     searches_df = pd.DataFrame(searches, columns=[
                         'ID', 'Business Type', 'Location', 'Search Type', 'Created At', 'Total Results', 'Without Websites'
                     ])
-                    st.dataframe(searches_df, use_container_width=True, hide_index=True)
+                    st.dataframe(searches_df, width='stretch', hide_index=True)
                 else:
                     st.info("No past searches found.")
         except Exception as e:
