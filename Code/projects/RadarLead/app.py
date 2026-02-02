@@ -18,12 +18,47 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-pro
 
 # Use PostgreSQL connection
 try:
-    engine = create_connection_postgresql()
-    # Use the engine's URL (SQLAlchemy handles encoding properly)
-    app.config['SQLALCHEMY_DATABASE_URI'] = str(engine.url)
+    # Test connection first to verify credentials
+    test_engine = create_connection_postgresql()
+    
+    # Build the database URI string for Flask-SQLAlchemy
+    # Get fresh values from environment (connection_engine already loaded .env)
+    db_user = os.getenv('DB_USER')
+    db_pass = os.getenv('DB_PASS')
+    db_host = os.getenv('DB_HOST', 'localhost')
+    db_name = os.getenv('DB_NAME')
+    
+    # Remove quotes if accidentally included
+    if db_pass and (db_pass.startswith('"') or db_pass.startswith("'")):
+        db_pass = db_pass.strip('"').strip("'")
+    
+    # Build the database URI string for Flask-SQLAlchemy
+    # Use URL.create() to ensure proper encoding, then convert to string
+    from sqlalchemy.engine.url import URL
+    from urllib.parse import quote_plus
+    
+    # Create URL object (this handles encoding properly)
+    db_url_obj = URL.create(
+        drivername="postgresql",
+        username=db_user,
+        password=db_pass,
+        host=db_host,
+        port=5432,
+        database=db_name
+    )
+    
+    # Convert to string - SQLAlchemy URL.__str__() handles encoding correctly
+    # Flask-SQLAlchemy will parse this and create its own engine
+    app.config['SQLALCHEMY_DATABASE_URI'] = str(db_url_obj)
     print("✅ Flask app configured with PostgreSQL")
+    
+    # Close the test engine since Flask-SQLAlchemy will create its own
+    test_engine.dispose()
+    
 except Exception as e:
     print(f"⚠️  Error connecting to PostgreSQL: {e}")
+    import traceback
+    traceback.print_exc()
     print("   Falling back to SQLite for development...")
     print("   Run 'python test_db_connection.py' to troubleshoot PostgreSQL connection")
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///radarlead.db'
@@ -32,6 +67,9 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'pool_pre_ping': True,  # Verify connections before using
     'pool_recycle': 300,    # Recycle connections after 5 minutes
+    'connect_args': {
+        'connect_timeout': 10
+    }
 }
 
 db = SQLAlchemy(app)
