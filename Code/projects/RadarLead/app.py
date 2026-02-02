@@ -19,11 +19,12 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-pro
 # Use PostgreSQL connection
 try:
     engine = create_connection_postgresql()
-    # Convert engine to URI format for Flask-SQLAlchemy
+    # Use the engine's URL (password is already properly encoded)
     app.config['SQLALCHEMY_DATABASE_URI'] = str(engine.url)
 except Exception as e:
     print(f"⚠️  Error connecting to PostgreSQL: {e}")
     print("   Falling back to SQLite for development...")
+    print("   Run 'python test_db_connection.py' to troubleshoot PostgreSQL connection")
     app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///radarlead.db'
 
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
