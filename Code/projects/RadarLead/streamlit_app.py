@@ -106,7 +106,7 @@ def display_results(businesses, businesses_without_website):
     if not businesses:
         return
     
-    # Initialize filter option in session state
+    # Initialize filter option in session state (before widget creation)
     if 'filter_option' not in st.session_state:
         st.session_state.filter_option = "All Businesses"
     
@@ -124,14 +124,19 @@ def display_results(businesses, businesses_without_website):
     
     # Filter option
     st.subheader("📋 Business Results")
+    # Get current filter option index
+    filter_options = ["All Businesses", "Without Websites Only", "With Websites Only"]
+    current_index = filter_options.index(st.session_state.filter_option) if st.session_state.filter_option in filter_options else 0
+    
+    # Create radio widget - it will automatically update session state
     filter_option = st.radio(
         "Show:",
-        ["All Businesses", "Without Websites Only", "With Websites Only"],
+        filter_options,
         horizontal=True,
         key="filter_option",
-        index=["All Businesses", "Without Websites Only", "With Websites Only"].index(st.session_state.filter_option)
+        index=current_index
     )
-    st.session_state.filter_option = filter_option
+    # Don't set st.session_state.filter_option here - the widget does it automatically
     
     # Filter businesses based on selection
     if filter_option == "All Businesses":
