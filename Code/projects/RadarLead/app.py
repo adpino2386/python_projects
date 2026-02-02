@@ -19,8 +19,9 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-pro
 # Use PostgreSQL connection
 try:
     engine = create_connection_postgresql()
-    # Use the engine's URL (password is already properly encoded)
+    # Use the engine's URL (SQLAlchemy handles encoding properly)
     app.config['SQLALCHEMY_DATABASE_URI'] = str(engine.url)
+    print("✅ Flask app configured with PostgreSQL")
 except Exception as e:
     print(f"⚠️  Error connecting to PostgreSQL: {e}")
     print("   Falling back to SQLite for development...")
