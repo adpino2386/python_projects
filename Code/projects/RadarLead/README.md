@@ -50,11 +50,23 @@ SECRET_KEY=your-secret-key-here
 
 ### 3. Run the Application
 
+**Option 1: Streamlit (Recommended - Simpler & More User-Friendly)**
+
+```bash
+streamlit run streamlit_app.py
+```
+
+The app will automatically open in your browser at `http://localhost:8501`
+
+**Option 2: Flask (If you prefer Flask)**
+
 ```bash
 python app.py
 ```
 
 The app will be available at `http://localhost:5000`
+
+**Note:** Streamlit is recommended as it's simpler, has a better UI out of the box, and avoids Flask-SQLAlchemy connection issues.
 
 ## Usage
 
