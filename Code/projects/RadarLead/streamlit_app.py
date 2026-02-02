@@ -538,42 +538,12 @@ elif page == "🗺️ Search by Map":
                         st.session_state.businesses_without_website = st.session_state.places_service.filter_businesses_without_website(businesses)
                         st.session_state.filter_option = "All Businesses"
                         # IMPORTANT: Preserve the map center after search
-                        # Don't let anything reset it
-                        if 'map_center' not in st.session_state:
-                            st.session_state.map_center = [final_search_lat, final_search_lng]
-                        
-                        # Show results on map (use the search location from session state)
-                        st.subheader("📍 Results on Map")
-                        # Use the final search coordinates
-                        results_map = folium.Map(
-                            location=[final_search_lat, final_search_lng],
-                            zoom_start=12
-                        )
-                        
-                        # Add center marker
-                        folium.Marker(
-                            [final_search_lat, final_search_lng],
-                            popup="Search Center",
-                            icon=folium.Icon(color='red', icon='info-sign')
-                        ).add_to(results_map)
-                        
-                        # Add business markers
-                        for biz in businesses:
-                            if biz.get('latitude') and biz.get('longitude'):
-                                color = 'green' if biz.get('has_website') else 'blue'
-                                folium.Marker(
-                                    [biz.get('latitude'), biz.get('longitude')],
-                                    popup=f"{biz.get('name', 'Unknown')}<br>{'Has Website' if biz.get('has_website') else 'No Website'}",
-                                    tooltip=biz.get('name', 'Unknown'),
-                                    icon=folium.Icon(color=color)
-                                ).add_to(results_map)
-                        
-                        st_folium(results_map, width='100%', height=500)
+                        st.session_state.map_center = [final_search_lat, final_search_lng]
+                        # Store search location for results map
+                        st.session_state.search_location = [final_search_lat, final_search_lng]
                         
                         st.success(f"✅ Found {len(businesses)} businesses!")
-                        
-                        # Display results table
-                        display_results(businesses, st.session_state.businesses_without_website)
+                        st.rerun()  # Rerun to show the persistent map and table below
                     else:
                         st.warning(f"No {business_type_map} found in the selected area.")
                         
@@ -581,6 +551,52 @@ elif page == "🗺️ Search by Map":
                     st.error(f"❌ Error searching businesses: {e}")
                     import traceback
                     st.code(traceback.format_exc())
+    
+    # Show results map and table if they exist (persist after search)
+    if 'businesses' in st.session_state and st.session_state.businesses and 'search_location' in st.session_state:
+        businesses = st.session_state.businesses
+        businesses_without_website = st.session_state.businesses_without_website
+        search_loc = st.session_state.search_location
+        
+        # Show results on map
+        st.subheader("📍 Results on Map")
+        results_map = folium.Map(
+            location=search_loc,
+            zoom_start=12
+        )
+        
+        # Add center marker
+        folium.Marker(
+            search_loc,
+            popup=f"<b>Search Center</b><br>Lat: {search_loc[0]:.6f}<br>Lng: {search_loc[1]:.6f}",
+            tooltip="Search Center",
+            icon=folium.Icon(color='red', icon='info-sign', prefix='fa')
+        ).add_to(results_map)
+        
+        # Add business markers
+        for biz in businesses:
+            if biz.get('latitude') and biz.get('longitude'):
+                color = 'green' if biz.get('has_website') else 'blue'
+                icon_type = 'check' if biz.get('has_website') else 'question'
+                popup_html = f"""
+                <b>{biz.get('name', 'Unknown')}</b><br>
+                {'✅ Has Website' if biz.get('has_website') else '❌ No Website'}<br>
+                Rating: {biz.get('rating', 'N/A')}<br>
+                {biz.get('address', '')}
+                """
+                folium.Marker(
+                    [biz.get('latitude'), biz.get('longitude')],
+                    popup=folium.Popup(popup_html, max_width=300),
+                    tooltip=biz.get('name', 'Unknown'),
+                    icon=folium.Icon(color=color, icon=icon_type, prefix='fa')
+                ).add_to(results_map)
+        
+        # Display the map with a stable key so it persists
+        st_folium(results_map, width='100%', height=500, key="persistent_results_map")
+        
+        # Display results table
+        st.subheader("📋 Business Details")
+        display_results(businesses, businesses_without_website)
 
 # Show past searches if database is available
 if st.session_state.db_engine:
