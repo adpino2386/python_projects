@@ -83,15 +83,31 @@ class OSMService:
         
         businesses = []
         
+        # Build Overpass QL query based on what tags we have
+        query_parts = []
+        
+        # Add amenity searches if we have specific amenity tags
+        # Use exact match (=) instead of regex (~) for better precision
+        if business_tags['amenity'] and business_tags['amenity'] != '|':
+            amenity_value = business_tags['amenity'].replace('^', '').replace('$', '')
+            query_parts.append(f'node["amenity"="{amenity_value}"](around:{radius},{lat},{lng});')
+            query_parts.append(f'way["amenity"="{amenity_value}"](around:{radius},{lat},{lng});')
+        
+        # Add shop searches if we have specific shop tags
+        if business_tags['shop'] and business_tags['shop'] != '|':
+            shop_value = business_tags['shop'].replace('^', '').replace('$', '')
+            query_parts.append(f'node["shop"="{shop_value}"](around:{radius},{lat},{lng});')
+            query_parts.append(f'way["shop"="{shop_value}"](around:{radius},{lat},{lng});')
+        
+        # If no specific tags, don't search (avoid returning everything)
+        if not query_parts:
+            return []
+        
         # Overpass QL query to find businesses in radius
-        # This searches for nodes and ways with relevant tags
         query = f"""
         [out:json][timeout:25];
         (
-          node["amenity"~"{business_tags['amenity']}"](around:{radius},{lat},{lng});
-          way["amenity"~"{business_tags['amenity']}"](around:{radius},{lat},{lng});
-          node["shop"~"{business_tags['shop']}"](around:{radius},{lat},{lng});
-          way["shop"~"{business_tags['shop']}"](around:{radius},{lat},{lng});
+          {' '.join(query_parts)}
         );
         out center meta;
         """
@@ -121,6 +137,9 @@ class OSMService:
                     tags = element.get('tags', {})
                     
                     # Extract business information
+                    # Determine actual business type from OSM tags
+                    actual_business_type = tags.get('amenity') or tags.get('shop') or business_type
+                    
                     business = {
                         'name': tags.get('name', 'Unnamed Business'),
                         'address': self._format_address(tags),
@@ -129,7 +148,8 @@ class OSMService:
                         'has_website': bool(tags.get('website') or tags.get('contact:website')),
                         'latitude': elem_lat,
                         'longitude': elem_lng,
-                        'business_type': business_type,
+                        'business_type': actual_business_type,  # Use actual OSM tag, not search term
+                        'search_term': business_type,  # Keep original search term for reference
                         'osm_id': element.get('id'),
                         'osm_type': element['type']
                     }
@@ -171,31 +191,69 @@ class OSMService:
         """
         Map business types to OSM tags.
         OSM uses tags like amenity=restaurant, shop=plumber, etc.
+        Returns dict with 'amenity' and 'shop' keys. Use '|' to skip that category.
         """
-        business_type_lower = business_type.lower()
+        business_type_lower = business_type.lower().strip()
         
-        # Common mappings
+        # Common mappings - be specific to avoid false matches
         mappings = {
-            'plumber': {'amenity': '|', 'shop': 'plumber'},
-            'hotel': {'amenity': 'hotel', 'shop': '|'},
-            'restaurant': {'amenity': 'restaurant', 'shop': '|'},
-            'restaurants': {'amenity': 'restaurant', 'shop': '|'},
-            'cafe': {'amenity': 'cafe', 'shop': '|'},
-            'coffee': {'amenity': 'cafe', 'shop': '|'},
-            'bar': {'amenity': 'bar', 'shop': '|'},
-            'pharmacy': {'amenity': 'pharmacy', 'shop': 'pharmacy'},
-            'supermarket': {'amenity': '|', 'shop': 'supermarket'},
-            'gas': {'amenity': 'fuel', 'shop': '|'},
-            'gas station': {'amenity': 'fuel', 'shop': '|'},
+            # Hotels
+            'hotel': {'amenity': '^hotel$', 'shop': '|'},
+            'hotels': {'amenity': '^hotel$', 'shop': '|'},
+            
+            # Plumbers
+            'plumber': {'amenity': '|', 'shop': '^plumber$'},
+            'plumbers': {'amenity': '|', 'shop': '^plumber$'},
+            
+            # Restaurants
+            'restaurant': {'amenity': '^restaurant$', 'shop': '|'},
+            'restaurants': {'amenity': '^restaurant$', 'shop': '|'},
+            
+            # Cafes
+            'cafe': {'amenity': '^cafe$', 'shop': '|'},
+            'cafes': {'amenity': '^cafe$', 'shop': '|'},
+            'coffee': {'amenity': '^cafe$', 'shop': '|'},
+            
+            # Bars
+            'bar': {'amenity': '^bar$', 'shop': '|'},
+            'bars': {'amenity': '^bar$', 'shop': '|'},
+            
+            # Pharmacies
+            'pharmacy': {'amenity': '^pharmacy$', 'shop': '^pharmacy$'},
+            'pharmacies': {'amenity': '^pharmacy$', 'shop': '^pharmacy$'},
+            
+            # Supermarkets
+            'supermarket': {'amenity': '|', 'shop': '^supermarket$'},
+            'supermarkets': {'amenity': '|', 'shop': '^supermarket$'},
+            
+            # Gas stations
+            'gas': {'amenity': '^fuel$', 'shop': '|'},
+            'gas station': {'amenity': '^fuel$', 'shop': '|'},
+            'gas stations': {'amenity': '^fuel$', 'shop': '|'},
+            'fuel': {'amenity': '^fuel$', 'shop': '|'},
+            
+            # Car dealerships
+            'car dealer': {'amenity': '|', 'shop': '^car$'},
+            'car dealership': {'amenity': '|', 'shop': '^car$'},
+            'car': {'amenity': '|', 'shop': '^car$'},
+            
+            # Grocery stores
+            'grocery': {'amenity': '|', 'shop': '^(supermarket|convenience|grocery)$'},
+            'grocery store': {'amenity': '|', 'shop': '^(supermarket|convenience|grocery)$'},
         }
         
-        # Try to find a match
+        # Try to find an exact match first
+        if business_type_lower in mappings:
+            return mappings[business_type_lower]
+        
+        # Try to find a partial match
         for key, tags in mappings.items():
-            if key in business_type_lower:
+            if key in business_type_lower or business_type_lower in key:
                 return tags
         
-        # Default: search for any amenity or shop
-        return {'amenity': '.*', 'shop': '.*'}
+        # If no match found, return empty (don't search for everything)
+        # This prevents returning all businesses when the type is unknown
+        return {'amenity': '|', 'shop': '|'}
     
     def _format_address(self, tags: Dict) -> str:
         """Format address from OSM tags"""
