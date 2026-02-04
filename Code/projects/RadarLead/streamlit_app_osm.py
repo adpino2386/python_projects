@@ -217,11 +217,21 @@ if page == "🔍 Search by Location/Coordinates":
                 "Search Radius (meters)",
                 min_value=1000,
                 max_value=50000,
-                value=10000,
+                value=5000,
                 step=1000,
-                help="Search radius in meters (default: 10km)"
+                help="Search radius in meters (default: 5km for better accuracy)"
             )
             location = None
+        else:
+            # For location-based search, also add radius option
+            radius = st.number_input(
+                "Search Radius (meters)",
+                min_value=1000,
+                max_value=50000,
+                value=5000,
+                step=1000,
+                help="Search radius in meters (default: 5km for better accuracy)"
+            )
         
         submitted = st.form_submit_button("🔍 Search Businesses", use_container_width=True, type="primary")
     
@@ -246,7 +256,8 @@ if page == "🔍 Search by Location/Coordinates":
                     else:
                         businesses = st.session_state.osm_service.search_businesses_by_location(
                             location=location,
-                            business_type=business_type
+                            business_type=business_type,
+                            radius=int(radius) if radius else 5000
                         )
                     
                     # Filter businesses without websites

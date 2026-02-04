@@ -42,10 +42,13 @@ class OSMService:
         """
         self._rate_limit()
         
+        # Add more specific parameters to improve geocoding accuracy
         params = {
             'q': address,
             'format': 'json',
-            'limit': 1
+            'limit': 1,
+            'addressdetails': 1,  # Get detailed address components
+            'extratags': 1  # Get extra tags for better matching
         }
         
         try:
@@ -55,10 +58,27 @@ class OSMService:
             
             if data:
                 result = data[0]
+                # Check if the result actually matches the requested city
+                address_parts = result.get('address', {})
+                city_match = False
+                
+                # Extract city name from address components
+                city_name = (address_parts.get('city') or 
+                           address_parts.get('town') or 
+                           address_parts.get('municipality') or 
+                           address_parts.get('village', '')).lower()
+                
+                # Check if the requested address contains the city name from result
+                address_lower = address.lower()
+                if city_name and city_name in address_lower:
+                    city_match = True
+                
                 return {
                     'lat': float(result['lat']),
                     'lng': float(result['lon']),
-                    'display_name': result.get('display_name', address)
+                    'display_name': result.get('display_name', address),
+                    'city': city_name,
+                    'matched': city_match
                 }
         except Exception as e:
             print(f"Geocoding error: {e}")
@@ -99,6 +119,12 @@ class OSMService:
             query_parts.append(f'node["shop"="{shop_value}"](around:{radius},{lat},{lng});')
             query_parts.append(f'way["shop"="{shop_value}"](around:{radius},{lat},{lng});')
         
+        # Add tourism searches (for hotels, hostels, etc.)
+        if business_tags.get('tourism') and business_tags['tourism'] != '|':
+            tourism_value = business_tags['tourism'].replace('^', '').replace('$', '')
+            query_parts.append(f'node["tourism"="{tourism_value}"](around:{radius},{lat},{lng});')
+            query_parts.append(f'way["tourism"="{tourism_value}"](around:{radius},{lat},{lng});')
+        
         # If no specific tags, don't search (avoid returning everything)
         if not query_parts:
             return []
@@ -137,8 +163,8 @@ class OSMService:
                     tags = element.get('tags', {})
                     
                     # Extract business information
-                    # Determine actual business type from OSM tags
-                    actual_business_type = tags.get('amenity') or tags.get('shop') or business_type
+                    # Determine actual business type from OSM tags (check tourism, amenity, shop)
+                    actual_business_type = tags.get('tourism') or tags.get('amenity') or tags.get('shop') or business_type
                     
                     business = {
                         'name': tags.get('name', 'Unnamed Business'),
@@ -162,13 +188,14 @@ class OSMService:
         
         return businesses
     
-    def search_businesses_by_location(self, location: str, business_type: str) -> List[Dict]:
+    def search_businesses_by_location(self, location: str, business_type: str, radius: int = 5000) -> List[Dict]:
         """
         Search for businesses in a location using text search.
         
         Args:
             location: Location string (e.g., "Montreal, Quebec, Canada")
             business_type: Type of business
+            radius: Search radius in meters (default: 5km, reduced from 10km for better accuracy)
             
         Returns:
             List of business dictionaries
@@ -179,67 +206,73 @@ class OSMService:
         if not geocode_result:
             return []
         
-        # Then search nearby (using a reasonable radius for city searches)
+        # Warn if geocoding might not have matched the exact city
+        if not geocode_result.get('matched', True):
+            print(f"⚠️ Geocoding warning: Result may not match exact city in '{location}'")
+            print(f"   Found: {geocode_result.get('display_name', 'Unknown')}")
+        
+        # Then search nearby (using a smaller radius for better accuracy)
         return self.search_businesses_nearby(
             geocode_result['lat'],
             geocode_result['lng'],
             business_type,
-            radius=10000  # 10km for city searches
+            radius=radius
         )
     
     def _get_osm_tags(self, business_type: str) -> Dict[str, str]:
         """
         Map business types to OSM tags.
-        OSM uses tags like amenity=restaurant, shop=plumber, etc.
-        Returns dict with 'amenity' and 'shop' keys. Use '|' to skip that category.
+        OSM uses tags like amenity=restaurant, shop=plumber, tourism=hotel, etc.
+        Returns dict with 'amenity', 'shop', and 'tourism' keys. Use '|' to skip that category.
         """
         business_type_lower = business_type.lower().strip()
         
         # Common mappings - be specific to avoid false matches
+        # NOTE: Hotels in OSM are typically tagged as tourism=hotel, not amenity=hotel
         mappings = {
-            # Hotels
-            'hotel': {'amenity': '^hotel$', 'shop': '|'},
-            'hotels': {'amenity': '^hotel$', 'shop': '|'},
+            # Hotels - use tourism=hotel (most common in OSM)
+            'hotel': {'amenity': '|', 'shop': '|', 'tourism': 'hotel'},
+            'hotels': {'amenity': '|', 'shop': '|', 'tourism': 'hotel'},
             
             # Plumbers
-            'plumber': {'amenity': '|', 'shop': '^plumber$'},
-            'plumbers': {'amenity': '|', 'shop': '^plumber$'},
+            'plumber': {'amenity': '|', 'shop': 'plumber', 'tourism': '|'},
+            'plumbers': {'amenity': '|', 'shop': 'plumber', 'tourism': '|'},
             
             # Restaurants
-            'restaurant': {'amenity': '^restaurant$', 'shop': '|'},
-            'restaurants': {'amenity': '^restaurant$', 'shop': '|'},
+            'restaurant': {'amenity': 'restaurant', 'shop': '|', 'tourism': '|'},
+            'restaurants': {'amenity': 'restaurant', 'shop': '|', 'tourism': '|'},
             
             # Cafes
-            'cafe': {'amenity': '^cafe$', 'shop': '|'},
-            'cafes': {'amenity': '^cafe$', 'shop': '|'},
-            'coffee': {'amenity': '^cafe$', 'shop': '|'},
+            'cafe': {'amenity': 'cafe', 'shop': '|', 'tourism': '|'},
+            'cafes': {'amenity': 'cafe', 'shop': '|', 'tourism': '|'},
+            'coffee': {'amenity': 'cafe', 'shop': '|', 'tourism': '|'},
             
             # Bars
-            'bar': {'amenity': '^bar$', 'shop': '|'},
-            'bars': {'amenity': '^bar$', 'shop': '|'},
+            'bar': {'amenity': 'bar', 'shop': '|', 'tourism': '|'},
+            'bars': {'amenity': 'bar', 'shop': '|', 'tourism': '|'},
             
             # Pharmacies
-            'pharmacy': {'amenity': '^pharmacy$', 'shop': '^pharmacy$'},
-            'pharmacies': {'amenity': '^pharmacy$', 'shop': '^pharmacy$'},
+            'pharmacy': {'amenity': 'pharmacy', 'shop': 'pharmacy', 'tourism': '|'},
+            'pharmacies': {'amenity': 'pharmacy', 'shop': 'pharmacy', 'tourism': '|'},
             
             # Supermarkets
-            'supermarket': {'amenity': '|', 'shop': '^supermarket$'},
-            'supermarkets': {'amenity': '|', 'shop': '^supermarket$'},
+            'supermarket': {'amenity': '|', 'shop': 'supermarket', 'tourism': '|'},
+            'supermarkets': {'amenity': '|', 'shop': 'supermarket', 'tourism': '|'},
             
             # Gas stations
-            'gas': {'amenity': '^fuel$', 'shop': '|'},
-            'gas station': {'amenity': '^fuel$', 'shop': '|'},
-            'gas stations': {'amenity': '^fuel$', 'shop': '|'},
-            'fuel': {'amenity': '^fuel$', 'shop': '|'},
+            'gas': {'amenity': 'fuel', 'shop': '|', 'tourism': '|'},
+            'gas station': {'amenity': 'fuel', 'shop': '|', 'tourism': '|'},
+            'gas stations': {'amenity': 'fuel', 'shop': '|', 'tourism': '|'},
+            'fuel': {'amenity': 'fuel', 'shop': '|', 'tourism': '|'},
             
             # Car dealerships
-            'car dealer': {'amenity': '|', 'shop': '^car$'},
-            'car dealership': {'amenity': '|', 'shop': '^car$'},
-            'car': {'amenity': '|', 'shop': '^car$'},
+            'car dealer': {'amenity': '|', 'shop': 'car', 'tourism': '|'},
+            'car dealership': {'amenity': '|', 'shop': 'car', 'tourism': '|'},
+            'car': {'amenity': '|', 'shop': 'car', 'tourism': '|'},
             
             # Grocery stores
-            'grocery': {'amenity': '|', 'shop': '^(supermarket|convenience|grocery)$'},
-            'grocery store': {'amenity': '|', 'shop': '^(supermarket|convenience|grocery)$'},
+            'grocery': {'amenity': '|', 'shop': 'supermarket', 'tourism': '|'},
+            'grocery store': {'amenity': '|', 'shop': 'supermarket', 'tourism': '|'},
         }
         
         # Try to find an exact match first
@@ -253,7 +286,7 @@ class OSMService:
         
         # If no match found, return empty (don't search for everything)
         # This prevents returning all businesses when the type is unknown
-        return {'amenity': '|', 'shop': '|'}
+        return {'amenity': '|', 'shop': '|', 'tourism': '|'}
     
     def _format_address(self, tags: Dict) -> str:
         """Format address from OSM tags"""
