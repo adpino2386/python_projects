@@ -197,7 +197,6 @@ if page == "🔍 Search by Location/Coordinates":
                 )
             latitude = None
             longitude = None
-            radius = None
         else:
             with col2:
                 col_lat, col_lng = st.columns(2)
@@ -213,25 +212,17 @@ if page == "🔍 Search by Location/Coordinates":
                         value=-73.5673,
                         format="%.10f"
                     )
-            radius = st.number_input(
-                "Search Radius (meters)",
-                min_value=1000,
-                max_value=50000,
-                value=5000,
-                step=1000,
-                help="Search radius in meters (default: 5km for better accuracy)"
-            )
             location = None
-        else:
-            # For location-based search, also add radius option
-            radius = st.number_input(
-                "Search Radius (meters)",
-                min_value=1000,
-                max_value=50000,
-                value=5000,
-                step=1000,
-                help="Search radius in meters (default: 5km for better accuracy)"
-            )
+        
+        # Radius input for both search types
+        radius = st.number_input(
+            "Search Radius (meters)",
+            min_value=1000,
+            max_value=50000,
+            value=5000,
+            step=1000,
+            help="Search radius in meters (default: 5km for better accuracy)"
+        )
         
         submitted = st.form_submit_button("🔍 Search Businesses", use_container_width=True, type="primary")
     
