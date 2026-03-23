@@ -257,3 +257,50 @@ if __name__ == '__main__':
         db.create_all()
     app.run(debug=True, port=5000)
 
+
+
+# ── Stripe webhook (add to existing Flask app) ────────────────────────────────
+from services.billing_service import BillingService
+from services.auth_service import AuthService
+
+_billing = BillingService()
+
+@app.route('/stripe/webhook', methods=['POST'])
+def stripe_webhook():
+    """
+    Stripe sends POST here when a checkout completes or subscription changes.
+    Register this URL in your Stripe dashboard under Webhooks.
+    """
+    try:
+        event = _billing.handle_webhook(
+            request.data,
+            request.headers.get('Stripe-Signature', '')
+        )
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
+
+    if event['event_type'] == 'checkout.session.completed':
+        # Grant credits to user
+        auth = AuthService(db.engine)
+        auth.add_credits_by_email(
+            email=event['user_email'],
+            amount=event['credits'],
+            plan=event['plan'],
+            stripe_customer_id=event.get('stripe_customer_id', ''),
+        )
+        print(f"✅ Granted {event['credits']} credits to {event['user_email']} ({event['plan']} plan)")
+
+    elif event['event_type'] in (
+        'customer.subscription.deleted',
+        'customer.subscription.paused',
+    ):
+        # Optionally downgrade user to free
+        with db.engine.connect() as conn:
+            from sqlalchemy import text as _text
+            conn.execute(_text("""
+                UPDATE users SET plan = 'free', updated_at = NOW()
+                WHERE stripe_customer_id = :scid
+            """), {'scid': event.get('stripe_customer_id', '')})
+            conn.commit()
+
+    return jsonify({'status': 'ok'})
