@@ -176,8 +176,8 @@ export default function LoginPage() {
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap'); ${css}`}</style>
       <div className="auth-wrap">
         <div className="auth-card">
-          <div className="auth-logo">etlyx <span>apply</span></div>
-          <div className="auth-tagline">AI-powered job search. Find your fit faster.</div>
+          <div className="auth-logo">apply by <span>etlyx</span></div>
+          <div className="auth-tagline">Paste any job description. Know your match in seconds.</div>
 
           <div className="auth-tabs">
             <button className={`auth-tab ${tab === "login" ? "active" : ""}`} onClick={() => { setTab("login"); setError(""); setSuccess(""); }}>Log in</button>
@@ -213,8 +213,8 @@ export default function LoginPage() {
 
           <div className="auth-fine-print">
             {tab === "signup"
-              ? "By signing up you agree to our terms. Free plan includes 5 searches/month."
-              : "Forgot your password? Use the sign up flow to reset it."}
+              ? "By signing up you agree to our terms. Free plan includes unlimited match analyses."
+              : "Forgot your password? Contact hello@etlyx.com for a reset."}
           </div>
         </div>
       </div>
