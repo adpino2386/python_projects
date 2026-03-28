@@ -382,5 +382,5 @@ if (existsSync(distPath)) {
   console.log("✅  Serving production build from /dist");
 }
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅  Etlyx Apply running on port ${PORT}`));
