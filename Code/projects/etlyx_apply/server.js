@@ -367,20 +367,23 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 import { existsSync } from "fs";
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const distPath  = join(__dirname, "dist");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = dirname(__filename);
+const distPath   = join(__dirname, "dist");
 
-if (existsSync(distPath)) {
-  // Serve static assets (JS, CSS, images)
-  app.use(express.static(distPath));
-  // All non-API routes → return index.html (React handles routing)
-  app.get("*", (req, res) => {
-    if (!req.path.startsWith("/api")) {
-      res.sendFile(join(distPath, "index.html"));
-    }
-  });
-  console.log("✅  Serving production build from /dist");
-}
+console.log("Looking for dist at:", distPath, "exists:", existsSync(distPath));
+
+// Always serve static files and catch-all — Express returns 404 if file not found
+app.use(express.static(distPath));
+
+app.get("*", (req, res) => {
+  const indexPath = join(distPath, "index.html");
+  if (existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send("Build not found. Run npm run build first.");
+  }
+});
 
 const PORT = process.env.PORT || 8080;
 app.listen(PORT, () => console.log(`✅  Etlyx Apply running on port ${PORT}`));
