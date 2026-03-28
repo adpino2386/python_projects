@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RadarLead - Find Businesses Without Websites</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        .search-form {
+            display: grid;
+            gap: 20px;
+        }
+        
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .form-group label {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+        }
+        
+        .form-group input,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .search-type-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .toggle-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .toggle-btn.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .btn {
+            padding: 14px 30px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .coordinates-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .results {
+            margin-top: 30px;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .results-count {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .business-list {
+            display: grid;
+            gap: 15px;
+        }
+        
+        .business-card {
+            padding: 20px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        
+        .business-card:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.2);
+        }
+        
+        .business-name {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .business-info {
+            color: #666;
+            margin: 5px 0;
+        }
+        
+        .business-info strong {
+            color: #333;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 2px solid #fcc;
+        }
+        
+        .export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 RadarLead</h1>
+            <p>Find businesses without websites in your area</p>
+        </div>
+        
+        <div class="card">
+            <form id="searchForm" class="search-form">
+                <div class="search-type-toggle">
+                    <button type="button" class="toggle-btn active" data-type="text">📍 Search by Location</button>
+                    <button type="button" class="toggle-btn" data-type="nearby">🗺️ Search by Coordinates</button>
+                </div>
+                
+                <div class="form-group">
+                    <label for="business_type">Business Type *</label>
+                    <input type="text" id="business_type" name="business_type" 
+                           placeholder="e.g., Plumbers, Hotels, Restaurants" required>
+                </div>
+                
+                <div id="locationGroup" class="form-group">
+                    <label for="location">Location *</label>
+                    <input type="text" id="location" name="location" 
+                           placeholder="e.g., Montreal, Quebec, Canada" required>
+                </div>
+                
+                <div id="coordinatesGroup" class="form-group hidden">
+                    <div class="coordinates-group">
+                        <div class="form-group">
+                            <label for="latitude">Latitude *</label>
+                            <input type="number" id="latitude" name="latitude" step="any" 
+                                   placeholder="45.5017">
+                        </div>
+                        <div class="form-group">
+                            <label for="longitude">Longitude *</label>
+                            <input type="number" id="longitude" name="longitude" step="any" 
+                                   placeholder="-73.5673">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="radius">Search Radius (meters)</label>
+                        <input type="number" id="radius" name="radius" value="10000" 
+                               placeholder="10000 (10km)">
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn" id="searchBtn">Search Businesses</button>
+            </form>
+        </div>
+        
+        <div id="errorMessage" class="error hidden"></div>
+        
+        <div id="loading" class="card loading hidden">
+            <div class="spinner"></div>
+            <p>Searching for businesses...</p>
+        </div>
+        
+        <div id="results" class="card results hidden">
+            <div class="results-header">
+                <div class="results-count" id="resultsCount"></div>
+                <div class="export-buttons">
+                    <button class="btn" onclick="exportToCSV()">Export CSV</button>
+                    <button class="btn" onclick="exportToJSON()">Export JSON</button>
+                </div>
+            </div>
+            <div id="businessList" class="business-list"></div>
+        </div>
+    </div>
+    
+    <script>
+        let currentResults = [];
+        let currentSearchType = 'text';
+        
+        // Toggle search type
+        document.querySelectorAll('.toggle-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentSearchType = btn.dataset.type;
+                
+                if (currentSearchType === 'nearby') {
+                    document.getElementById('locationGroup').classList.add('hidden');
+                    document.getElementById('coordinatesGroup').classList.remove('hidden');
+                    document.getElementById('location').removeAttribute('required');
+                    document.getElementById('latitude').setAttribute('required', '');
+                    document.getElementById('longitude').setAttribute('required', '');
+                } else {
+                    document.getElementById('locationGroup').classList.remove('hidden');
+                    document.getElementById('coordinatesGroup').classList.add('hidden');
+                    document.getElementById('location').setAttribute('required', '');
+                    document.getElementById('latitude').removeAttribute('required');
+                    document.getElementById('longitude').removeAttribute('required');
+                }
+            });
+        });
+        
+        // Form submission
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = {
+                business_type: document.getElementById('business_type').value,
+                search_type: currentSearchType
+            };
+            
+            if (currentSearchType === 'nearby') {
+                formData.latitude = document.getElementById('latitude').value;
+                formData.longitude = document.getElementById('longitude').value;
+                formData.radius = document.getElementById('radius').value || 10000;
+            } else {
+                formData.location = document.getElementById('location').value;
+            }
+            
+            // Show loading
+            document.getElementById('errorMessage').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('searchBtn').disabled = true;
+            
+            try {
+                const response = await fetch('/api/search', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(data.error || 'Search failed');
+                }
+                
+                currentResults = data.businesses || [];
+                displayResults(data);
+                
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('searchBtn').disabled = false;
+            }
+        });
+        
+        function displayResults(data) {
+            const resultsDiv = document.getElementById('results');
+            const resultsCount = document.getElementById('resultsCount');
+            const businessList = document.getElementById('businessList');
+            
+            resultsCount.textContent = `Found ${data.businesses_without_website} businesses without websites (out of ${data.total_businesses} total)`;
+            
+            if (currentResults.length === 0) {
+                businessList.innerHTML = '<div class="no-results">No businesses without websites found in this area.</div>';
+            } else {
+                businessList.innerHTML = currentResults.map(biz => `
+                    <div class="business-card">
+                        <div class="business-name">${biz.name}</div>
+                        ${biz.address ? `<div class="business-info"><strong>📍 Address:</strong> ${biz.address}</div>` : ''}
+                        ${biz.phone ? `<div class="business-info"><strong>📞 Phone:</strong> ${biz.phone}</div>` : ''}
+                        ${biz.rating ? `<div class="business-info"><strong>⭐ Rating:</strong> ${biz.rating} (${biz.total_ratings || 0} reviews)</div>` : ''}
+                    </div>
+                `).join('');
+            }
+            
+            resultsDiv.classList.remove('hidden');
+        }
+        
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = `Error: ${message}`;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        function exportToCSV() {
+            if (currentResults.length === 0) return;
+            
+            const headers = ['Name', 'Address', 'Phone', 'Rating', 'Total Ratings'];
+            const rows = currentResults.map(biz => [
+                biz.name || '',
+                biz.address || '',
+                biz.phone || '',
+                biz.rating || '',
+                biz.total_ratings || 0
+            ]);
+            
+            const csv = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+            
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `businesses_${Date.now()}.csv`;
+            a.click();
+        }
+        
+        function exportToJSON() {
+            if (currentResults.length === 0) return;
+            
+            const json = JSON.stringify(currentResults, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `businesses_${Date.now()}.json`;
+            a.click();
+        }
+    </script>
+</body>
+</html>
+
