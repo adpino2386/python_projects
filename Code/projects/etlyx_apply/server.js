@@ -362,4 +362,25 @@ app.get("/api/usage", requireAuth, (req, res) => {
   res.json({ plan: req.profile.plan });
 });
 
-app.listen(3001, () => console.log("✅  Etlyx Apply — Resume Match Engine running"));
+// ─── Serve Vite build in production ──────────────────────────────────────────
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
+import { existsSync } from "fs";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const distPath  = join(__dirname, "dist");
+
+if (existsSync(distPath)) {
+  // Serve static assets (JS, CSS, images)
+  app.use(express.static(distPath));
+  // All non-API routes → return index.html (React handles routing)
+  app.get("*", (req, res) => {
+    if (!req.path.startsWith("/api")) {
+      res.sendFile(join(distPath, "index.html"));
+    }
+  });
+  console.log("✅  Serving production build from /dist");
+}
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, () => console.log(`✅  Etlyx Apply running on port ${PORT}`));
