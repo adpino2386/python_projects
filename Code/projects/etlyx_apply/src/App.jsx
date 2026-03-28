@@ -396,8 +396,7 @@ function ProfileTab({ profile, setProfile, resumes, setResumes, activeResumeIdx,
 }
 
 // ─── Job Match Tab ─────────────────────────────────────────────────────────────
-function JobMatchTab({ profile, resumeName, applications, setApplications, toast, isPro, onUpgrade, persisted, setPersisted, saveApplication }) {
-  // All state persisted via props so it survives tab switches
+function JobMatchTab({ profile, resumeName, applications, setApplications, toast, isPro, onUpgrade, persisted, setPersisted, saveApplication, analysesUsed, setAnalysesUsed }) {
   const { company="", jobTitle="", jd="", tone="professional", matchData=null, tweaks=null, interviewData=null, coverLetter="", activeResultTab="match" } = persisted || {};
 
   const set = k => v => setPersisted(p => ({ ...p, [k]: v }));
@@ -405,8 +404,9 @@ function JobMatchTab({ profile, resumeName, applications, setApplications, toast
   const [loading, setLoading]       = useState(false);
   const [activeStep, setActiveStep] = useState(null);
 
-  const profileReady = !!(profile.title || profile.skills?.length || profile.summary);
-  const canAnalyze   = profileReady && company && jd.trim().length > 50;
+  const profileReady  = !!(profile.title || profile.skills?.length || profile.summary);
+  const canAnalyze    = profileReady && company && jd.trim().length > 50;
+  const analysesLeft  = isPro ? null : Math.max(0, 5 - (analysesUsed || 0));
 
   const runMatch = async () => {
     if (!canAnalyze || loading) return;
@@ -415,7 +415,15 @@ function JobMatchTab({ profile, resumeName, applications, setApplications, toast
     try {
       const data = await authedPost("/api/match", { profile, jobDescription: jd, company, jobTitle });
       setPersisted(p => ({ ...p, matchData: data }));
-    } catch (e) { toast("⚠️ Analysis failed. Try again."); }
+      if (!isPro) setAnalysesUsed(n => (n || 0) + 1);
+    } catch (e) {
+      if (e.code === "analyses_exhausted") {
+        onUpgrade();
+        toast("You've used all 5 free analyses this month — upgrade to Pro for unlimited.");
+      } else {
+        toast("⚠️ Analysis failed. Try again.");
+      }
+    }
     setLoading(false); setActiveStep(null);
   };
 
@@ -503,6 +511,15 @@ function JobMatchTab({ profile, resumeName, applications, setApplications, toast
         </div>
       )}
 
+      {!isPro && analysesLeft !== null && (
+        <div style={{ background: "#111318", border: "1px solid #1e2330", borderRadius: 10, padding: "10px 16px", marginBottom: 16, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 13, color: analysesLeft <= 1 ? "#f87171" : "#9ca3af" }}>
+            {analysesLeft === 0 ? "⚠️ No analyses left this month" : `🎯 ${analysesLeft} free ${analysesLeft === 1 ? "analysis" : "analyses"} remaining this month`}
+          </span>
+          <button className="btn btn-sm" onClick={onUpgrade} style={{ fontSize: 11 }}>Upgrade for unlimited →</button>
+        </div>
+      )}
+
       {/* Input card */}
       <div className="card">
         <div className="card-title">Job Details</div>
@@ -512,8 +529,8 @@ function JobMatchTab({ profile, resumeName, applications, setApplications, toast
           <div className="form-group full"><label>Job Description</label><textarea rows={10} value={jd} onChange={e => set("jd")(e.target.value)} placeholder="Paste the full job description here…" /></div>
         </div>
         <div style={{ marginTop: 16 }}>
-          <button className="btn" onClick={runMatch} disabled={!canAnalyze || loading}>
-            {activeStep === "matching" ? <><div className="spinner" />Analyzing match…</> : "🎯 Analyze Match"}
+          <button className="btn" onClick={runMatch} disabled={!canAnalyze || loading || (!isPro && analysesLeft === 0)}>
+            {activeStep === "matching" ? <><div className="spinner" />Analyzing match…</> : analysesLeft === 0 ? "No analyses left — upgrade" : "🎯 Analyze Match"}
           </button>
         </div>
       </div>
@@ -971,6 +988,7 @@ export default function App() {
   const [applications, setApplications] = useState([]);
   const [toastMsg, setToastMsg] = useState(null);
   const [matchPersisted, setMatchPersisted] = useState({});
+  const [analysesUsed, setAnalysesUsed]     = useState(0);
   const [page, setPage] = useState(() => {
     const p = window.location.pathname;
     if (p === "/success") return "success";
@@ -1084,7 +1102,7 @@ export default function App() {
         </div>
         <div className="content">
           {tab === "profile" && <ProfileTab profile={profile} setProfile={setProfile} resumes={resumes} setResumes={setResumes} activeResumeIdx={activeResumeIdx} setActiveResumeIdx={setActiveResumeIdx} applications={applications} toast={toast} />}
-          {tab === "match"   && <JobMatchTab profile={profile} resumeName={profile.name||"My Resume"} applications={applications} setApplications={setApplications} toast={toast} isPro={isPro} onUpgrade={() => setPage("pricing")} persisted={matchPersisted} setPersisted={setMatchPersisted} saveApplication={saveApplication} />}
+          {tab === "match"   && <JobMatchTab profile={profile} resumeName={profile.name||"My Resume"} applications={applications} setApplications={setApplications} toast={toast} isPro={isPro} onUpgrade={() => setPage("pricing")} persisted={matchPersisted} setPersisted={setMatchPersisted} saveApplication={saveApplication} analysesUsed={analysesUsed} setAnalysesUsed={setAnalysesUsed} />}
           {tab === "tracker" && <TrackerTab applications={applications} setApplications={setApplications} toast={toast} updateApplicationStatus={updateApplicationStatus} deleteApplication={deleteApplication} />}
         </div>
         {toastMsg && <Toast msg={toastMsg} onDone={() => setToastMsg(null)} />}

@@ -68,15 +68,34 @@ async function callClaude({ model = HAIKU, system = "", messages, maxTokens = 10
 
 // ─── Job Match Analysis (Haiku — cheap, returns full JSON) ────────────────────
 app.post("/api/match", requireAuth, async (req, res) => {
-  const { profile, jobDescription, company, jobTitle } = req.body;
+  const { user, profile } = req;
+
+  // Check and increment usage for free users
+  if (profile.plan !== "pro") {
+    const resetAt    = profile.searches_reset_at ? new Date(profile.searches_reset_at) : null;
+    const now        = new Date();
+    const needsReset = !resetAt || now.getFullYear() !== resetAt.getFullYear() || now.getMonth() !== resetAt.getMonth();
+
+    if (needsReset) {
+      await supabaseAdmin.from("profiles").update({ searches_used: 1, searches_reset_at: now.toISOString() }).eq("id", user.id);
+    } else {
+      const used = profile.searches_used || 0;
+      if (used >= 5) {
+        return res.status(403).json({ error: { message: "analyses_exhausted", plan: "free", searches_used: used } });
+      }
+      await supabaseAdmin.from("profiles").update({ searches_used: used + 1 }).eq("id", user.id);
+    }
+  }
+
+  const { profile: candidateProfile, jobDescription, company, jobTitle } = req.body;
 
   const profileText = `
-Name: ${profile.name || ""}
-Current Title: ${profile.title || ""}
-Summary: ${profile.summary || ""}
-Skills: ${(profile.skills || []).slice(0, 20).join(", ") || "none listed"}
+Name: ${candidateProfile.name || ""}
+Current Title: ${candidateProfile.title || ""}
+Summary: ${candidateProfile.summary || ""}
+Skills: ${(candidateProfile.skills || []).slice(0, 20).join(", ") || "none listed"}
 Experience:
-${(profile.experience || []).slice(0, 3).map(e =>
+${(candidateProfile.experience || []).slice(0, 3).map(e =>
   `- ${e.role} at ${e.company} (${e.period || ""})\n${(e.accomplishments || []).slice(0, 3).map(a => `  • ${a}`).join("\n")}`
 ).join("\n")}
 `.trim();
