@@ -5,6 +5,7 @@ import LoginPage from "./pages/Login.jsx";
 import PricingPage from "./pages/Pricing.jsx";
 import SuccessPage from "./pages/Success.jsx";
 import AccountPage from "./pages/Account.jsx";
+import LandingPage from "./pages/Landing.jsx";
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -980,6 +981,7 @@ function TrackerTab({ applications, setApplications, toast, updateApplicationSta
 export default function App() {
   const { user, loading: authLoading, isPro } = useAuth();
   const [tab, setTab]         = useState("profile");
+  const [showLogin, setShowLogin] = useState(false); // landing → login transition
   // Multiple resume profiles — array of profile objects, activeResumeIdx tracks which is selected
   const [resumes, setResumes]         = useState([{ id: "r-default", name: "My Resume", skills: [], experience: [] }]);
   const [activeResumeIdx, setActiveResumeIdx] = useState(0);
@@ -1078,7 +1080,8 @@ export default function App() {
   };
 
   if (authLoading) return <><style>{css}</style><div style={{ minHeight: "100vh", background: "#0d0f14", display: "flex", alignItems: "center", justifyContent: "center" }}><div className="spinner" style={{ width: 28, height: 28, borderWidth: 3 }} /></div></>;
-  if (!user)              return <LoginPage />;
+  if (!user && !showLogin)    return <LandingPage onGetStarted={() => setShowLogin(true)} />;
+  if (!user)                  return <LoginPage />;
   if (page === "success") return <SuccessPage onContinue={() => setPage("app")} />;
   if (page === "account") return <AccountPage onBack={() => setPage("app")} onUpgrade={() => setPage("pricing")} />;
   if (page === "pricing") return <PricingPage onContinueFree={() => setPage("app")} />;
