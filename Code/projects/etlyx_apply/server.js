@@ -24,11 +24,20 @@ const stripe        = new Stripe(STRIPE_SECRET_KEY);
 const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // ─── Models ───────────────────────────────────────────────────────────────────
-const HAIKU  = "claude-haiku-4-5-20251001";   // match scoring — cheap + fast
-const SONNET = "claude-sonnet-4-20250514";     // resume tweaks, cover letters, interview prep, parsing
+const HAIKU  = "claude-haiku-4-5-20251001";
+const SONNET = "claude-sonnet-4-20250514";
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
+
+// Force HTTPS in production (Render sets x-forwarded-proto)
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production" && req.headers["x-forwarded-proto"] !== "https") {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
+  }
+  next();
+});
+
 app.use("/api/stripe/webhook", express.raw({ type: "application/json" }));
 app.use(express.json({ limit: "10mb" }));
 
