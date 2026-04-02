@@ -6,6 +6,8 @@ import PricingPage from "./pages/Pricing.jsx";
 import SuccessPage from "./pages/Success.jsx";
 import AccountPage from "./pages/Account.jsx";
 import LandingPage from "./pages/Landing.jsx";
+import PrivacyPage from "./pages/Privacy.jsx";
+import TermsPage from "./pages/Terms.jsx";
 
 const css = `
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap');
@@ -995,11 +997,21 @@ export default function App() {
     const p = window.location.pathname;
     if (p === "/success") return "success";
     if (p === "/account") return "account";
+    if (p === "/privacy") return "privacy";
+    if (p === "/terms")   return "terms";
     return "app";
   });
 
   const toast = msg => { setToastMsg(null); setTimeout(() => setToastMsg(msg), 10); };
   const key   = k => user ? `ea:${user.id}:${k}` : null;
+
+  // Clean up OAuth redirect params from URL after login
+  useEffect(() => {
+    const url = window.location.href;
+    if (url.includes("error=") || url.includes("access_token=") || url.includes("code=")) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   // ── Load profile/resumes from localStorage ────────────────────────────────
   useEffect(() => {
@@ -1080,11 +1092,15 @@ export default function App() {
   };
 
   if (authLoading) return <><style>{css}</style><div style={{ minHeight: "100vh", background: "#0d0f14", display: "flex", alignItems: "center", justifyContent: "center" }}><div className="spinner" style={{ width: 28, height: 28, borderWidth: 3 }} /></div></>;
+  if (page === "privacy") return <PrivacyPage />;
+  if (page === "terms")   return <TermsPage />;
   if (!user && !showLogin)    return <LandingPage onGetStarted={() => setShowLogin(true)} />;
   if (!user)                  return <LoginPage />;
-  if (page === "success") return <SuccessPage onContinue={() => setPage("app")} />;
-  if (page === "account") return <AccountPage onBack={() => setPage("app")} onUpgrade={() => setPage("pricing")} />;
-  if (page === "pricing") return <PricingPage onContinueFree={() => setPage("app")} />;
+  if (page === "privacy")     return <PrivacyPage />;
+  if (page === "terms")       return <TermsPage />;
+  if (page === "success")     return <SuccessPage onContinue={() => setPage("app")} />;
+  if (page === "account")     return <AccountPage onBack={() => setPage("app")} onUpgrade={() => setPage("pricing")} />;
+  if (page === "pricing")     return <PricingPage onContinueFree={() => setPage("app")} />;
 
   return (
     <>
