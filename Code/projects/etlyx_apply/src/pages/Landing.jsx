@@ -699,6 +699,8 @@ export default function LandingPage({ onGetStarted }) {
         <div className="footer-links">
           <a href="mailto:hello@etlyx.com" className="footer-link">hello@etlyx.com</a>
           <a href="https://etlyx.com" className="footer-link">etlyx.com</a>
+          <a href="/privacy" className="footer-link">Privacy Policy</a>
+          <a href="/terms" className="footer-link">Terms of Service</a>
         </div>
         <div className="footer-copy">© 2026 etlyx. All rights reserved.</div>
       </footer>
