@@ -124,7 +124,7 @@ input:focus,textarea:focus,select:focus{border-color:#c8a96e}textarea{resize:ver
 
 /* Tweaked resume snapshot */
 .snapshot-badge{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.6px;padding:2px 7px;border-radius:20px;background:#0a1f17;border:1px solid #34d39930;color:#34d399}
-{background:#0d0f14;border:1px solid #1e2330;border-radius:8px;padding:24px;color:#d1cdc7;font-size:14px;line-height:1.9;white-space:pre-wrap}
+.cover-letter-text{background:#0d0f14;border:1px solid #1e2330;border-radius:8px;padding:24px;color:#d1cdc7;font-size:14px;line-height:1.9;white-space:pre-wrap}
 
 /* Tracker */
 .tracker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;align-items:start}
@@ -141,7 +141,104 @@ input:focus,textarea:focus,select:focus{border-color:#c8a96e}textarea{resize:ver
 .s-saved{color:#60a5fa}.s-applied{color:#a78bfa}.s-interview{color:#34d399}.s-offer{color:#c8a96e}.s-rejected{color:#f87171}
 
 ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#2a2f3e;border-radius:3px}
-@media(max-width:900px){.form-grid{grid-template-columns:1fr}.tracker-grid{grid-template-columns:1fr 1fr}.topbar{padding:0 16px}.content{padding:24px 16px}.action-grid{grid-template-columns:1fr 1fr}}
+
+/* ── Bottom nav for mobile ── */
+.bottom-nav{display:none}
+
+/* ── Mobile responsive ── */
+@media(max-width:768px){
+  /* Hide desktop top nav buttons, show bottom nav */
+  .nav{display:none}
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;
+    background:#0d0f14;border-top:1px solid #1e2330;
+    padding:8px 0 env(safe-area-inset-bottom,8px);
+    z-index:100;justify-content:space-around;align-items:center;
+  }
+  .bottom-nav-btn{
+    display:flex;flex-direction:column;align-items:center;gap:3px;
+    background:none;border:none;cursor:pointer;padding:6px 16px;
+    font-family:'DM Sans',sans-serif;color:#6b7280;transition:color 0.15s;
+    flex:1;
+  }
+  .bottom-nav-btn.active{color:#c8a96e}
+  .bottom-nav-icon{font-size:20px;line-height:1}
+  .bottom-nav-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:0.5px}
+
+  /* Topbar — compact on mobile */
+  .topbar{padding:0 16px;height:52px}
+  .logo{font-size:18px}
+
+  /* Add padding at bottom so content doesn't hide behind bottom nav */
+  .content{padding:20px 16px 90px;max-width:100%}
+
+  /* Cards */
+  .card{padding:18px;border-radius:10px}
+  .section-title{font-size:22px}
+  .section-sub{font-size:13px;margin-bottom:20px}
+
+  /* Forms — single column */
+  .form-grid{grid-template-columns:1fr}
+  input,textarea,select{font-size:16px} /* prevents iOS zoom on focus */
+
+  /* Upload zone — more compact */
+  .upload-zone{padding:32px 20px}
+
+  /* Resume tabs — wrap */
+  .resume-tab{font-size:12px;padding:5px 10px}
+
+  /* Stats — 2x2 grid on mobile */
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .stat-num{font-size:22px}
+
+  /* Match analysis — stack score and details vertically */
+  .score-ring{width:72px;height:72px}
+  .score-num{font-size:24px}
+
+  /* Experience bars — hide comment on small screens */
+  .exp-row{flex-wrap:wrap;gap:6px}
+  .exp-label{width:100%;flex-shrink:unset}
+  .exp-comment{font-size:11px;max-width:100%}
+
+  /* Action grid — single column on small phones */
+  .action-grid{grid-template-columns:1fr}
+  .action-btn{padding:12px}
+  .action-btn-desc{display:none} /* hide description to save space */
+
+  /* Tracker — scrollable horizontal on mobile */
+  .tracker-grid{
+    grid-template-columns:repeat(5,220px);
+    overflow-x:auto;padding-bottom:8px;
+    scrollbar-width:thin;
+  }
+
+  /* Modal — full screen on mobile */
+  .modal-backdrop{padding:0;align-items:flex-end}
+  .modal{
+    border-radius:16px 16px 0 0;max-width:100%;
+    max-height:92vh;padding:24px 20px;
+  }
+  .modal-actions{flex-wrap:wrap}
+
+  /* Toast — full width on mobile */
+  .toast{left:16px;right:16px;bottom:80px;font-size:13px}
+
+  /* Job match input area */
+  textarea[rows="10"]{min-height:160px}
+
+  /* Result tabs — scrollable */
+  .result-tabs-scroll{overflow-x:auto;white-space:nowrap;margin:0 -20px;padding:0 20px}
+
+  /* Cover letter */
+  .cover-letter-text{padding:16px;font-size:13px}
+}
+
+@media(max-width:400px){
+  .action-grid{grid-template-columns:1fr}
+  .stat-grid{grid-template-columns:1fr 1fr}
+  .content{padding:16px 12px 90px}
+  .card{padding:14px}
+}
 `;
 
 const TABS = [
@@ -584,11 +681,13 @@ function JobMatchTab({ profile, resumeName, applications, setApplications, toast
       {/* Results */}
       {(matchData || tweaks || interviewData || coverLetter) && (
         <div className="card">
-          {/* Tab bar */}
-          <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1px solid #1e2330" }}>
+          {/* Tab bar - scrollable on mobile */}
+          <div className="result-tabs-scroll">
+            <div style={{ display: "flex", gap: 4, marginBottom: 24, borderBottom: "1px solid #1e2330" }}>
             {[{id:"match",label:"Match Analysis",show:!!matchData},{id:"tweaks",label:"Resume Tweaks",show:!!tweaks},{id:"interview",label:"Interview Prep",show:!!interviewData},{id:"cover",label:"Cover Letter",show:!!coverLetter}].filter(t=>t.show).map(t => (
               <button key={t.id} onClick={() => setPersisted(p=>({...p,activeResultTab:t.id}))} style={{ background: "none", border: "none", borderBottom: activeResultTab===t.id ? "2px solid #c8a96e" : "2px solid transparent", color: activeResultTab===t.id ? "#c8a96e" : "#6b7280", padding: "8px 14px", cursor: "pointer", fontFamily: "'DM Sans',sans-serif", fontSize: 13.5, fontWeight: 500, marginBottom: -1, transition: "color 0.15s" }}>{t.label}</button>
             ))}
+            </div>
           </div>
 
           {/* Match Analysis */}
@@ -1124,6 +1223,16 @@ export default function App() {
           {tab === "match"   && <JobMatchTab profile={profile} resumeName={profile.name||"My Resume"} applications={applications} setApplications={setApplications} toast={toast} isPro={isPro} onUpgrade={() => setPage("pricing")} persisted={matchPersisted} setPersisted={setMatchPersisted} saveApplication={saveApplication} analysesUsed={analysesUsed} setAnalysesUsed={setAnalysesUsed} />}
           {tab === "tracker" && <TrackerTab applications={applications} setApplications={setApplications} toast={toast} updateApplicationStatus={updateApplicationStatus} deleteApplication={deleteApplication} />}
         </div>
+
+        {/* Bottom nav for mobile */}
+        <nav className="bottom-nav">
+          {TABS.map(t => (
+            <button key={t.id} className={`bottom-nav-btn${tab===t.id?" active":""}`} onClick={() => setTab(t.id)}>
+              <span className="bottom-nav-icon">{t.icon}</span>
+              <span className="bottom-nav-label">{t.label}</span>
+            </button>
+          ))}
+        </nav>
         {toastMsg && <Toast msg={toastMsg} onDone={() => setToastMsg(null)} />}
       </div>
     </>
