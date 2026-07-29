@@ -25,7 +25,7 @@ const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
 // ─── Models ───────────────────────────────────────────────────────────────────
 const HAIKU  = "claude-haiku-4-5-20251001";   // match scoring — cheap + fast
-const SONNET = "claude-sonnet-4-20250514";     // resume tweaks, cover letters, interview prep, parsing
+const SONNET = "claude-sonnet-4-6";     // resume tweaks, cover letters, interview prep, parsing
 
 // ─── App setup ────────────────────────────────────────────────────────────────
 const app = express();
